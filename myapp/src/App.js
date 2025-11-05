@@ -24,6 +24,7 @@ import { clearAuthData, getAuthData } from "./utils/authUtils";
 import { MenuRefreshProvider } from "./contexts/MenuRefreshContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import LimitSizeInitializer from "./components/LimitSizeInitializer";
+import "./styles/App.css";
 
 const { Sider, Content, Header } = Layout;
 
@@ -125,7 +126,7 @@ function AppContent() {
     <Layout style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <Header 
         style={{ 
-          background: "#fff", 
+          background: "#fff",
           padding: "0 24px",
           display: "flex",
           justifyContent: "space-between",
@@ -148,7 +149,7 @@ function AppContent() {
             }}
           />
           <h2 style={{ 
-            color: "#333", 
+            color: "#333",
             margin: 0, 
             fontSize: "20px", 
             fontWeight: "600"
@@ -197,6 +198,7 @@ function AppContent() {
                 }
               />
               <Route path="/checklist/:id/details" element={<ChecklistDetailPage />} />
+              <Route path="/checklist-detail/:id" element={<ChecklistDetailPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route 
                 path="/settings" 

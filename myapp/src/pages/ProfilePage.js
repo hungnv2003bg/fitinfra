@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Card, Row, Col, Avatar, Button, Divider, Tag, Space, Input, Modal, message, Form } from "antd";
+import { Card, Row, Col, Avatar, Button, Divider, Tag, Space, Input, Modal, message, notification, Form } from "antd";
 import { 
   UserOutlined, 
   MailOutlined, 
@@ -198,8 +198,9 @@ export default function ProfilePage() {
 
     const error = validateInput(editingField, editValue);
     if (error) {
-      message.error({
-        content: error,
+      notification.error({
+        message: lang === 'vi' ? 'Hệ thống' : '系统',
+        description: error,
         placement: 'bottomRight'
       });
       return;
@@ -236,8 +237,9 @@ export default function ProfilePage() {
       localStorage.setItem("user", JSON.stringify(updatedUser));
       
       
-      message.success({
-        content: t.updateSuccess,
+      notification.success({
+        message: lang === 'vi' ? 'Hệ thống' : '系统',
+        description: t.updateSuccess,
         placement: 'bottomRight'
       });
       setEditingField(null);
@@ -250,32 +252,17 @@ export default function ProfilePage() {
         const errorData = error.response.data;
         
         if (errorData.error === "DUPLICATE_EMAIL") {
-          message.error({
-            content: `Email "${errorData.duplicateValue}" đã được sử dụng. Vui lòng chọn email khác.`,
-            placement: 'bottomRight'
-          });
+          notification.error({ message: lang === 'vi' ? 'Hệ thống' : '系统', description: `Email "${errorData.duplicateValue}" đã được sử dụng. Vui lòng chọn email khác.`, placement: 'bottomRight' });
         } else if (errorData.error === "DUPLICATE_PHONE") {
-          message.error({
-            content: `Số điện thoại "${errorData.duplicateValue}" đã được sử dụng. Vui lòng chọn số khác.`,
-            placement: 'bottomRight'
-          });
+          notification.error({ message: lang === 'vi' ? 'Hệ thống' : '系统', description: `Số điện thoại "${errorData.duplicateValue}" đã được sử dụng. Vui lòng chọn số khác.`, placement: 'bottomRight' });
         } else {
-          message.error({
-            content: errorData.error || "Cập nhật thông tin thất bại",
-            placement: 'bottomRight'
-          });
+          notification.error({ message: lang === 'vi' ? 'Hệ thống' : '系统', description: errorData.error || "Cập nhật thông tin thất bại", placement: 'bottomRight' });
         }
       } else if (error.response && error.response.status === 401) {
-        message.error({
-          content: "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
-          placement: 'bottomRight'
-        });
+        notification.error({ message: lang === 'vi' ? 'Hệ thống' : '系统', description: "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.", placement: 'bottomRight' });
         handleLogout();
       } else {
-        message.error({
-          content: "Cập nhật thông tin thất bại. Vui lòng thử lại.",
-          placement: 'bottomRight'
-        });
+        notification.error({ message: lang === 'vi' ? 'Hệ thống' : '系统', description: "Cập nhật thông tin thất bại. Vui lòng thử lại.", placement: 'bottomRight' });
       }
     } finally {
       setLoading(false);
@@ -301,18 +288,16 @@ export default function ProfilePage() {
         newPassword: values.newPassword
       });
       
-      message.success({
-        content: t.changePasswordSuccess,
+      notification.success({
+        message: lang === 'vi' ? 'Hệ thống' : '系统',
+        description: t.changePasswordSuccess,
         placement: 'bottomRight'
       });
       setChangePasswordVisible(false);
       passwordForm.resetFields();
     } catch (error) {
       const errorMessage = error.response?.data?.error || "Đổi mật khẩu thất bại";
-      message.error({
-        content: errorMessage,
-        placement: 'bottomRight'
-      });
+      notification.error({ message: lang === 'vi' ? 'Hệ thống' : '系统', description: errorMessage, placement: 'bottomRight' });
     } finally {
       setChangePasswordLoading(false);
     }

@@ -1,13 +1,15 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Button, Spin, Table, Tag, Input, Space, Popconfirm, message, DatePicker, Tooltip } from "antd";
-import { CheckSquareOutlined, EditOutlined, DeleteOutlined, SearchOutlined, EyeOutlined, FileTextOutlined, PoweroffOutlined, CheckCircleOutlined } from "@ant-design/icons";
+import { Button, Spin, Table, Tag, Input, Space, Popconfirm, message, Tooltip, notification, Select } from "antd";
+import { CheckSquareOutlined, EditOutlined, DeleteOutlined, SearchOutlined, EyeOutlined, FileTextOutlined, PoweroffOutlined, CheckCircleOutlined, MailOutlined, LockOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import ChecklistModal from "../components/modals/ChecklistModal";
 import ChecklistEditModal from "../components/modals/ChecklistEditModal";
 import ChecklistViewModal from "../components/modals/ChecklistViewModal";
+import ChecklistMailRecipientModal from "../components/modals/ChecklistMailRecipientModal";
+import ChecklistPermissionModal from "../components/modals/ChecklistPermissionModal";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useSelector } from "react-redux";
-import { formatDateVN } from "../utils/dateUtils";
+import { formatDateVN, formatDateShortVN } from "../utils/dateUtils";
 import axios from "../plugins/axios";
 
 export default function ChecklistPage() {
@@ -20,19 +22,29 @@ export default function ChecklistPage() {
   const [rows, setRows] = useState([]);
   const [filteredRows, setFilteredRows] = useState([]);
   const [searchText, setSearchText] = useState("");
-  const [dateRange, setDateRange] = useState([]);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [groupFilter, setGroupFilter] = useState('all');
+  
   const [editRecord, setEditRecord] = useState(null);
   const [viewRecord, setViewRecord] = useState(null);
+  const [mailRecipientsRecord, setMailRecipientsRecord] = useState(null);
   const [groups, setGroups] = useState([]);
   const [users, setUsers] = useState([]);
   const [timeRepeats, setTimeRepeats] = useState([]);
+  const [openPermission, setOpenPermission] = useState(false);
+  const [userChecklistPerms, setUserChecklistPerms] = useState({ view: true, edit: false, del: false, create: false });
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
 
   // removed legacy weekly/detail bootstrap
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await axios.get("/api/checklists");
+      const params = {};
+      if (groupFilter && groupFilter !== 'all') {
+        params.groupId = groupFilter;
+      }
+      const res = await axios.get("/api/checklists", { params });
       const data = res.data;
       const items = Array.isArray(data) ? data : [];
       setRows(items);
@@ -42,7 +54,7 @@ export default function ChecklistPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [groupFilter]);
 
   // Fetch groups, users and time-repeats data
   const fetchGroupsAndUsers = useCallback(async () => {
@@ -63,28 +75,35 @@ export default function ChecklistPage() {
   useEffect(() => {
     fetchData();
     fetchGroupsAndUsers();
+    // fetch my checklist permissions
+    (async () => {
+      try {
+        const res = await axios.get('/api/checklists/global/permissions/check');
+        if (res && res.data) setUserChecklistPerms(res.data);
+      } catch {}
+    })();
   }, [fetchData, fetchGroupsAndUsers, refreshKey]);
 
   useEffect(() => {
     let filtered = rows;
 
     if (searchText) {
-      filtered = filtered.filter(item =>
-        item.taskName?.toLowerCase().includes(searchText.toLowerCase())
-      );
-    }
-
-    if (dateRange && dateRange.length === 2 && dateRange[0] && dateRange[1]) {
-      const start = dateRange[0].startOf('day').toDate().getTime();
-      const end = dateRange[1].endOf('day').toDate().getTime();
+      const q = searchText.toLowerCase();
       filtered = filtered.filter(item => {
-        const ts = item.createdAt ? new Date(item.createdAt).getTime() : 0;
-        return ts >= start && ts <= end;
+        const nameMatch = (item.taskName || '').toLowerCase().includes(q);
+        const contentMatch = (item.workContent || '').toLowerCase().includes(q);
+        return nameMatch || contentMatch;
       });
     }
 
+    // removed date range filtering per request
+
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(item => (item.status || 'INACTIVE') === statusFilter);
+    }
+
     setFilteredRows(filtered);
-  }, [rows, searchText, dateRange]);
+  }, [rows, searchText, statusFilter]);
 
   // Helper functions để hiển thị tên group và user
   const getUserDisplayName = (userId) => {
@@ -123,6 +142,7 @@ export default function ChecklistPage() {
     }).join(', ');
   };
 
+  // Backend now provides next times; keep helpers removed
 
   const labels = {
     vi: {
@@ -134,28 +154,36 @@ export default function ChecklistPage() {
       workContent: "Nội dung công việc",
       startAt: "Thời gian bắt đầu",
       statusCol: "Trạng thái",
-      repeat: "Thời gian lặp lại",
+      repeat: "Thời gian tiếp theo",
       dueInDays: "Thời gian cần hoàn thành",
-      remindInDays: "Ngày nhắc nhở",
       action: "Thao tác",
+      view: "Xem",
+      editAction: "Sửa",
+      manageMailList: "Quản lý danh sách mail",
       active: "Hoạt động",
       inactive: "Không hoạt động",
       groups: "nhóm",
       viewChecklistDetail: "Xem chi tiết checklist",
       turnOffChecklist: "Tắt checklist",
       turnOnChecklist: "Kích hoạt checklist",
+      confirmTurnOff: "Bạn chắc chắn muốn tắt checklist?",
+      confirmTurnOn: "Bạn chắc chắn muốn bật checklist?",
       createdAt: "Ngày tạo",
       reviewDate: "",
       lastEditedBy: "Người sửa",
       lastEditedAt: "Cập nhật lần cuối",
       status: "Trạng thái",
-      searchPlaceholder: "Tìm kiếm theo tên công việc...",
+      searchPlaceholder: "Tìm kiếm theo tên/nội dung công việc...",
       dateRangePlaceholder: ["Từ ngày", "Đến ngày"],
       clearFilters: "Xóa bộ lọc",
+      statusFilterPlaceholder: "Lọc theo trạng thái",
+      allStatus: "Tất cả trạng thái",
+      filterByGroup: "Lọc theo nhóm thực hiện",
+      allGroups: "Tất cả nhóm",
       categoryMap: {},
     },
     zh: {
-      header: "清单",
+      header: "事件管理",
       addTask: "新增任务",
       stt: "序号",
       taskName: "任务名称",
@@ -163,16 +191,20 @@ export default function ChecklistPage() {
       workContent: "工作内容",
       startAt: "开始时间",
       statusCol: "状态",
-      repeat: "重复周期",
+      repeat: "下次时间",
       dueInDays: "完成时限",
-      remindInDays: "提醒日期",
       action: "操作",
+      view: "查看",
+      editAction: "编辑",
+      manageMailList: "管理邮件列表",
       active: "启用中",
       inactive: "未启用",
       groups: "组",
-      viewChecklistDetail: "查看清单明细",
-      turnOffChecklist: "停用清单",
-      turnOnChecklist: "启用清单",
+      viewChecklistDetail: "查看事件管理明细",
+      turnOffChecklist: "停用事件管理",
+      turnOnChecklist: "启用事件管理",
+      confirmTurnOff: "您确定要停用该事件管理吗？",
+      confirmTurnOn: "您确定要启用该事件管理吗？",
       createdAt: "创建日期",
       reviewDate: "",
       document: "",
@@ -180,25 +212,33 @@ export default function ChecklistPage() {
       lastEditedBy: "编辑人",
       lastEditedAt: "修改日期",
       status: "状态",
-      searchPlaceholder: "按任务名称搜索",
+      searchPlaceholder: "按任务名称/内容搜索",
       dateRangePlaceholder: ["开始日期", "结束日期"],
       clearFilters: "清除筛选",
+      statusFilterPlaceholder: "按状态筛选",
+      allStatus: "所有状态",
+      filterByGroup: "按执行组筛选",
+      allGroups: "所有组",
       categoryMap: {},
     },
   };
 
   const t = labels[lang];
+  const { Option } = Select;
 
   // Check if user has admin or manager role
   const isAdminOrManager = Array.isArray(quyenList) && quyenList.some(role => 
     role === 'ADMIN' || role === 'MANAGER' || role === 'ROLE_ADMIN' || role === 'ROLE_MANAGER'
+  );
+  const isAdmin = Array.isArray(quyenList) && quyenList.some(role => 
+    role === 'ADMIN' || role === 'ROLE_ADMIN'
   );
 
   const columns = [
     {
       title: t.stt,
       key: "stt",
-      render: (_, __, index) => <Tag color="blue">{index + 1}</Tag>,
+      render: (_, __, index) => <Tag color="blue">{((pagination.current - 1) * pagination.pageSize) + index + 1}</Tag>,
       width: 80,
       align: "center",
     },
@@ -207,7 +247,8 @@ export default function ChecklistPage() {
       dataIndex: "taskName",
       key: "taskName",
       width: 200,
-      align: "center",
+      onHeaderCell: () => ({ style: { textAlign: 'center' } }),
+      onCell: () => ({ style: { textAlign: 'left' } }),
     },
     {
       title: t.workContent,
@@ -230,8 +271,9 @@ export default function ChecklistPage() {
       title: t.startAt,
       dataIndex: "startAt",
       key: "startAt",
-      align: "center",
-      render: (v) => formatDateVN(v),
+      onHeaderCell: () => ({ style: { textAlign: 'center' } }),
+      onCell: () => ({ style: { textAlign: 'left' } }),
+      render: (v) => formatDateShortVN(v),
     },
     {
       title: t.statusCol,
@@ -249,28 +291,33 @@ export default function ChecklistPage() {
       title: t.repeat,
       dataIndex: "repeatId",
       key: "repeatId",
-      align: "center",
-      render: (repeatId) => {
-        if (!repeatId) return '-';
-        
-        const timeRepeat = timeRepeats.find(tr => tr.id === repeatId);
-        if (!timeRepeat) return `ID: ${repeatId}`;
-        
-        const unitLabels = {
-          day: lang === 'vi' ? 'Ngày' : '天',
-          week: lang === 'vi' ? 'Tuần' : '周', 
-          month: lang === 'vi' ? 'Tháng' : '月',
-          year: lang === 'vi' ? 'Năm' : '年'
-        };
-        
-        const unitLabel = unitLabels[timeRepeat.unit] || timeRepeat.unit;
-        return `${timeRepeat.number} ${unitLabel}`;
+      onHeaderCell: () => ({ style: { textAlign: 'center' } }),
+      onCell: () => ({ style: { textAlign: 'left' } }),
+      render: (_, record) => {
+        const nextTime = record.nextScheduledAt;
+        const list = Array.isArray(record.nextThreeScheduled) ? record.nextThreeScheduled : [];
+        if (!nextTime) return '-';
+        const tooltipContent = list.length > 0 ? (
+          <div style={{ color: 'black' }}>
+            {lang === 'vi' ? 'Thời gian tiếp theo:' : '下次时间:'}
+            <br />
+            {list.map((iso, idx) => (
+              <div key={idx}>{idx + 1}. {formatDateShortVN(iso)}</div>
+            ))}
+          </div>
+        ) : null;
+        return (
+          <Tooltip title={tooltipContent} placement="topLeft" overlayInnerStyle={{ backgroundColor: 'white', color: 'black', border: '1px solid black' }}>
+            <span style={{ cursor: 'help' }}>{formatDateShortVN(nextTime)}</span>
+          </Tooltip>
+        );
       }
     },
     {
       title: t.dueInDays,
       dataIndex: "dueInDays",
       key: "dueInDays",
+      onHeaderCell: () => ({ style: { textAlign: 'center' } }),
       align: "center",
       render: (dueInDays) => {
         if (!dueInDays) return '-';
@@ -294,34 +341,10 @@ export default function ChecklistPage() {
       }
     },
     {
-      title: t.remindInDays,
-      dataIndex: "remindInDays",
-      key: "remindInDays",
-      align: "center",
-      render: (remindInDays) => {
-        if (!remindInDays) return '-';
-        if (lang === 'vi') {
-          if (remindInDays === 1) return '1 Ngày';
-          if (remindInDays < 7) return `${remindInDays} Ngày`;
-          if (remindInDays === 7) return '1 Tuần';
-          if (remindInDays < 30) return `${Math.round(remindInDays / 7)} Tuần`;
-          if (remindInDays === 30) return '1 Tháng';
-          if (remindInDays < 365) return `${Math.round(remindInDays / 30)} Tháng`;
-          return `${Math.round(remindInDays / 365)} Năm`;
-        }
-        if (remindInDays === 1) return '1 天';
-        if (remindInDays < 7) return `${remindInDays} 天`;
-        if (remindInDays === 7) return '1 周';
-        if (remindInDays < 30) return `${Math.round(remindInDays / 7)} 周`;
-        if (remindInDays === 30) return '1 月';
-        if (remindInDays < 365) return `${Math.round(remindInDays / 30)} 月`;
-        return `${Math.round(remindInDays / 365)} 年`;
-      }
-    },
-    {
       title: t.reviewer,
       dataIndex: "implementers",
       key: "implementers",
+      onHeaderCell: () => ({ style: { textAlign: 'center' } }),
       align: "center",
       render: (vals) => {
         const implementersList = getImplementersDisplay(vals);
@@ -349,13 +372,13 @@ export default function ChecklistPage() {
       title: t.action,
       key: "action",
       fixed: "right",
-      width: 160,
+      width: 200,
       align: "center",
       render: (_, record) => (
         <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
-          <Button icon={<EyeOutlined />} size="middle" onClick={() => setViewRecord(record)} />
-          {isAdminOrManager && (
-            <Button icon={<EditOutlined />} size="middle" onClick={() => setEditRecord(record)} />
+          <Button icon={<EyeOutlined />} size="middle" onClick={() => setViewRecord(record)} title={t.view} />
+          {(isAdmin || userChecklistPerms.edit) && (
+            <Button icon={<EditOutlined />} size="middle" onClick={() => setEditRecord(record)} title={t.editAction} />
           )}
           <Button 
             icon={<FileTextOutlined />} 
@@ -363,29 +386,49 @@ export default function ChecklistPage() {
             onClick={() => navigate(`/checklist/${record.id}/details`)} 
             title={t.viewChecklistDetail}
           />
-          {isAdminOrManager && (
-            <Button 
-              icon={record.status === 'ACTIVE' ? <PoweroffOutlined /> : <CheckCircleOutlined />}
-              size="middle"
-              type={record.status === 'ACTIVE' ? 'default' : 'primary'}
-              onClick={async () => {
+          <Button 
+            icon={<MailOutlined />} 
+            size="middle" 
+            onClick={() => setMailRecipientsRecord(record)} 
+            title={t.manageMailList}
+            style={{ display: isAdmin ? undefined : 'none' }}
+          />
+          {isAdmin && (
+            <Popconfirm
+              title={record.status === 'ACTIVE' ? t.confirmTurnOff : t.confirmTurnOn}
+              onConfirm={async () => {
                 try {
                   const newStatus = record.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
                   await axios.patch(`/api/checklists/${encodeURIComponent(String(record.id))}`, {
                     status: newStatus,
                     lastEditedBy: nguoiDung?.userID
                   });
-                  message.success({ 
-                    content: `Đã ${newStatus === 'ACTIVE' ? 'kích hoạt' : 'tắt'} checklist`, 
+                  notification.success({ 
+                    message: lang === 'vi' ? 'Hệ thống' : '系统',
+                    description: lang === 'vi' 
+                      ? `Đã ${newStatus === 'ACTIVE' ? 'kích hoạt' : 'tắt'} checklist`
+                      : `${newStatus === 'ACTIVE' ? '已启用' : '已停用'}事件管理`, 
                     placement: 'bottomRight' 
                   });
                   fetchData();
                 } catch {
-                  message.error({ content: 'Cập nhật trạng thái thất bại', placement: 'bottomRight' });
+                  notification.error({ 
+                    message: lang === 'vi' ? 'Hệ thống' : '系统', 
+                    description: lang === 'vi' ? 'Cập nhật trạng thái thất bại' : '更新状态失败', 
+                    placement: 'bottomRight' 
+                  });
                 }
               }}
-              title={record.status === 'ACTIVE' ? t.turnOffChecklist : t.turnOnChecklist}
-            />
+              okText={lang === 'vi' ? 'Xác nhận' : '确认'}
+              cancelText={lang === 'vi' ? 'Hủy' : '取消'}
+            >
+              <Button 
+                icon={record.status === 'ACTIVE' ? <PoweroffOutlined /> : <CheckCircleOutlined />}
+                size="middle"
+                type={record.status === 'ACTIVE' ? 'default' : 'primary'}
+                title={record.status === 'ACTIVE' ? t.turnOffChecklist : t.turnOnChecklist}
+              />
+            </Popconfirm>
           )}
         </div>
       )
@@ -421,22 +464,47 @@ export default function ChecklistPage() {
               style={{ width: 250 }}
               allowClear
             />
-            <DatePicker.RangePicker
-              placeholder={t.dateRangePlaceholder}
-              value={dateRange}
-              onChange={(vals) => setDateRange(vals || [])}
-              style={{ width: 280 }}
-              format="DD/MM/YYYY"
-            />
-            <Button onClick={() => { setSearchText(""); setDateRange([]); }}>
+            {/* Date range picker removed per request */}
+            <Input.Group compact>
+              <Select
+                value={groupFilter}
+                onChange={(v) => setGroupFilter(v)}
+                style={{ width: 180, height: 32 }}
+                dropdownMatchSelectWidth={false}
+                placeholder={t.filterByGroup}
+              >
+                <Option value="all">{t.allGroups}</Option>
+                {groups.map(g => (
+                  <Option key={g.id} value={String(g.id)}>{g.name}</Option>
+                ))}
+              </Select>
+            </Input.Group>
+            <Input.Group compact>
+              <Select
+                value={statusFilter}
+                onChange={(v) => setStatusFilter(v)}
+                style={{ width: 160, height: 32 }}
+                dropdownMatchSelectWidth={false}
+              >
+                <Option value="all">{t.allStatus}</Option>
+                <Option value="ACTIVE">{t.active}</Option>
+                <Option value="INACTIVE">{t.inactive}</Option>
+              </Select>
+            </Input.Group>
+            <Button onClick={() => { setSearchText(""); setStatusFilter('all'); setGroupFilter('all'); }}>
               {t.clearFilters}
             </Button>
           </Space>
-          {isAdminOrManager && (
-            <Button type="primary" onClick={() => setOpen(true)}>
-              {t.addTask}
-            </Button>
-          )}
+          <Space>
+            {isAdmin && (
+              <Button onClick={() => setOpenPermission(true)} icon={<LockOutlined />}>{lang === 'zh' ? '权限' : 'Phân quyền'}</Button>
+            )}
+            {(isAdminOrManager || userChecklistPerms.create) && (
+              <Button type="primary" onClick={() => setOpen(true)}>
+                {t.addTask}
+              </Button>
+            )}
+          </Space>
         </div>
       </div>
 
@@ -446,6 +514,8 @@ export default function ChecklistPage() {
           dataSource={filteredRows} 
           columns={columns}
           scroll={{ x: 1300 }}
+          pagination={{ current: pagination.current, pageSize: pagination.pageSize, showSizeChanger: true, showQuickJumper: true }}
+          onChange={(p) => setPagination({ current: p.current, pageSize: p.pageSize })}
         />
       </Spin>
 
@@ -464,6 +534,16 @@ export default function ChecklistPage() {
         open={!!viewRecord}
         record={viewRecord}
         onCancel={() => setViewRecord(null)}
+      />
+      <ChecklistMailRecipientModal
+        visible={!!mailRecipientsRecord}
+        checklist={mailRecipientsRecord}
+        onCancel={() => setMailRecipientsRecord(null)}
+      />
+      <ChecklistPermissionModal
+        open={openPermission}
+        onCancel={() => setOpenPermission(false)}
+        onSaved={() => fetchData()}
       />
     </div>
   );

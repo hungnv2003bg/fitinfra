@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Modal, List, Button, Image, Typography, Divider, Space, Tag, Spin } from "antd";
-import { UserOutlined, CalendarOutlined, EditOutlined, ClockCircleOutlined } from "@ant-design/icons";
+import { Modal, List, Button, Image, Typography, Divider, Space, Tag, Spin, Select, notification } from "antd";
+import { UserOutlined, CalendarOutlined, EditOutlined, ClockCircleOutlined, MailOutlined } from "@ant-design/icons";
 import { DownloadOutlined, FileTextOutlined, PictureOutlined, VideoCameraOutlined, ReloadOutlined } from "@ant-design/icons";
 import API_CONFIG from "../../config/api";
 import axios from "../../plugins/axios";
@@ -14,6 +14,13 @@ export default function SOPDetailModal({ open, sop, onCancel }) {
   const [fileTypes, setFileTypes] = useState({});
   const [loading, setLoading] = useState(false);
   const [documents, setDocuments] = useState([]);
+  const [mailOpen, setMailOpen] = useState(false);
+  const [userOptions, setUserOptions] = useState([]);
+  const [groupOptions, setGroupOptions] = useState([]);
+  const [selectedUsers, setSelectedUsers] = useState([]);
+  const [selectedGroups, setSelectedGroups] = useState([]);
+  const [selectedCcUsers, setSelectedCcUsers] = useState([]);
+  const [selectedCcGroups, setSelectedCcGroups] = useState([]);
 
   const getFiles = () => {
     if (sop?.files && Array.isArray(sop.files) && sop.files.length > 0) {
@@ -120,6 +127,44 @@ export default function SOPDetailModal({ open, sop, onCancel }) {
     } catch {
       return 'other';
     }
+  };
+
+  const openMailModal = async () => {
+    try {
+      const [usersRes, groupsRes] = await Promise.all([
+        axios.get('/api/users'),
+        axios.get('/api/groups')
+      ]);
+      setUserOptions((usersRes.data || []).map(u => ({ label: u.fullName || u.manv || u.email, value: u.userID })));
+      setGroupOptions((groupsRes.data || []).map(g => ({ label: g.name, value: g.id })));
+      setMailOpen(true);
+    } catch {
+      setUserOptions([]);
+      setGroupOptions([]);
+      setMailOpen(true);
+    }
+  };
+
+  const sendMail = async () => {
+    try {
+      const docId = sop.documentID || sop.id;
+      await axios.post(`/api/sop-documents/${encodeURIComponent(String(docId))}/notify`, {
+        userIds: selectedUsers,
+        groupIds: selectedGroups,
+        ccUserIds: selectedCcUsers,
+        ccGroupIds: selectedCcGroups
+      });
+      notification.success({
+        message: lang === 'zh' ? '系统' : 'Hệ thống',
+        description: lang === 'zh' ? '邮件已发送成功' : 'Đã gửi mail thành công',
+        placement: 'bottomRight'
+      });
+    } catch {}
+    setMailOpen(false);
+    setSelectedUsers([]);
+    setSelectedGroups([]);
+    setSelectedCcUsers([]);
+    setSelectedCcGroups([]);
   };
 
   const getFileType = async (url, name = '', index) => {
@@ -370,6 +415,9 @@ export default function SOPDetailModal({ open, sop, onCancel }) {
       open={open}
       onCancel={onCancel}
       footer={[
+        <Button key="mail" type="primary" icon={<MailOutlined />} onClick={openMailModal}>
+          {lang === 'vi' ? 'Gửi mail' : '发送邮件'}
+        </Button>,
         <Button key="close" onClick={onCancel}>
           {lang === 'zh' ? '关闭' : 'Đóng'}
         </Button>,
@@ -465,37 +513,16 @@ export default function SOPDetailModal({ open, sop, onCancel }) {
                   </div>
                 )}
                 
-                {file.fileType === 'video' && (
-                  <div style={{ textAlign: 'center' }}>
-                    <video
-                      src={file.filePath}
-                      controls
-                      style={{ 
-                        maxWidth: '100%', 
-                        maxHeight: '300px',
-                        borderRadius: '4px'
-                      }}
-                    >
-                      {lang === 'zh' ? '浏览器不支持该视频。' : 'Trình duyệt không hỗ trợ video.'}
-                    </video>
-                  </div>
-                )}
-                
-                {(file.fileType !== 'image' && file.fileType !== 'video') && (
-                  <div style={{ 
-                    textAlign: 'center', 
-                    padding: '20px',
-                    backgroundColor: '#f5f5f5',
-                    borderRadius: '4px',
-                    border: '2px dashed #d9d9d9'
-                  }}>
-                    <FileTextOutlined style={{ fontSize: 48, color: '#999', marginBottom: '8px' }} />
-                    <div style={{ color: '#666' }}>
-                      {lang === 'zh' ? '无法预览文件' : 'Không thể xem trước file'} {file.fileType}
-                    </div>
-                    <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
-                      {lang === 'zh' ? '点击下载打开文件' : 'Click Tai xuong de mo file'}
-                    </div>
+                {(file.fileType !== 'image' && file.fileType !== 'video') && file.createdAt && (
+                  <div style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>
+                    {lang === 'zh' ? '上传时间' : 'Thời gian upload'}: {new Date(file.createdAt).toLocaleString('vi-VN', {
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit'
+                    })}
                   </div>
                 )}
               </div>
@@ -503,6 +530,65 @@ export default function SOPDetailModal({ open, sop, onCancel }) {
           </div>
         </div>
       )}
+
+      <Modal
+        title={(lang==='vi' ? 'Thông báo đã tạo ' : '通知创建 ') + (sop.title || sop.name || '')}
+        open={mailOpen}
+        onCancel={() => setMailOpen(false)}
+        onOk={sendMail}
+        okText={lang==='vi' ? 'Gửi' : '发送'}
+      >
+        <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+          <div>
+            <div style={{ marginBottom: 6 }}>{lang==='vi' ? 'Chọn người dùng' : '选择用户'}</div>
+            <Select
+              mode="multiple"
+              options={userOptions}
+              value={selectedUsers}
+              onChange={setSelectedUsers}
+              style={{ width:'100%' }}
+              placeholder={lang==='vi' ? 'Người dùng' : '用户'}
+              allowClear
+            />
+          </div>
+          <div>
+            <div style={{ marginBottom: 6 }}>{lang==='vi' ? 'Chọn nhóm' : '选择群组'}</div>
+            <Select
+              mode="multiple"
+              options={groupOptions}
+              value={selectedGroups}
+              onChange={setSelectedGroups}
+              style={{ width:'100%' }}
+              placeholder={lang==='vi' ? 'Nhóm' : '群组'}
+              allowClear
+            />
+          </div>
+          <div>
+            <div style={{ marginBottom: 6 }}>{lang==='vi' ? 'CC - Chọn người dùng' : '抄送 - 选择用户'}</div>
+            <Select
+              mode="multiple"
+              options={userOptions}
+              value={selectedCcUsers}
+              onChange={setSelectedCcUsers}
+              style={{ width:'100%' }}
+              placeholder={lang==='vi' ? 'CC người dùng' : '抄送用户'}
+              allowClear
+            />
+          </div>
+          <div>
+            <div style={{ marginBottom: 6 }}>{lang==='vi' ? 'CC - Chọn nhóm' : '抄送 - 选择群组'}</div>
+            <Select
+              mode="multiple"
+              options={groupOptions}
+              value={selectedCcGroups}
+              onChange={setSelectedCcGroups}
+              style={{ width:'100%' }}
+              placeholder={lang==='vi' ? 'CC nhóm' : '抄送群组'}
+              allowClear
+            />
+          </div>
+        </div>
+      </Modal>
       
       {}
       {(!sop.files || sop.files.length === 0) && (

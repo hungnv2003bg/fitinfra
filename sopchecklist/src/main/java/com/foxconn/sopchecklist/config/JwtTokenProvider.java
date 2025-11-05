@@ -28,7 +28,7 @@ public class JwtTokenProvider {
     private UsersService usersService;
     
     private static final String SECRET_KEY = "mySecretKey123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890";
-    private static final long EXPIRATION_TIME = 1800000; // 30 minutes 
+    private static final long EXPIRATION_TIME = 3600000; // 1 hour 
     
     private Key getSigningKey() {
         return Keys.hmacShaKeyFor(SECRET_KEY.getBytes());

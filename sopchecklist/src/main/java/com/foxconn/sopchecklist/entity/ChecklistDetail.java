@@ -36,7 +36,7 @@ public class ChecklistDetail {
     @Column(name = "work_content", columnDefinition = "NVARCHAR(MAX)")
     private String workContent;
 
-    // Lấy từ checklist
+   
     @Column(name = "implementer", nullable = false, columnDefinition = "NVARCHAR(100)")
     private String implementer;
 

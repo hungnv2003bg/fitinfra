@@ -8,7 +8,6 @@ import org.springframework.web.multipart.MultipartFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-// removed unused imports after dropping local download endpoint
 import java.util.HashMap;
 import java.util.Map;
 
@@ -17,7 +16,6 @@ import java.util.Map;
 @CrossOrigin
 public class ChecklistDetailUploadController {
 
-    // logger kept for potential future debug of uploads
     
     private final ChecklistDetailFileStorageService storageService;
     

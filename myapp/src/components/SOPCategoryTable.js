@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Table, Tag, Spin, Button, Popconfirm, message, Modal, Input } from "antd";
+import { Table, Tag, Spin, Button, Popconfirm, message, Modal, Input, notification } from "antd";
 import axios from "../plugins/axios";
 import { useNavigate } from "react-router-dom";
 import { EditOutlined, DeleteOutlined, ProfileOutlined } from "@ant-design/icons";
@@ -101,8 +101,9 @@ export default function SOPCategoryTable() {
             cancelText="Hủy"
             onConfirm={async () => {
               setRows(prev => prev.filter(r => r.key !== record.key));
-              message.success({
-                content: "Đã xóa mục",
+              notification.success({
+                message: 'Hệ thống',
+                description: "Đã xóa mục",
                 placement: 'bottomRight'
               });
             }}

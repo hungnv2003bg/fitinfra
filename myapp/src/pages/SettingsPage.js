@@ -1,8 +1,14 @@
 import React, { useEffect, useState } from "react";
-import { Layout, Menu, Form, InputNumber, Card, message, Button, Spin } from "antd";
-import { SettingOutlined, MailOutlined, HddOutlined, ReloadOutlined } from "@ant-design/icons";
+import { Layout, Menu, Form, InputNumber, Card, message, notification, Button, Spin } from "antd";
+import { SettingOutlined, MailOutlined, HddOutlined, ReloadOutlined, UserOutlined } from "@ant-design/icons";
 import { useLanguage } from "../contexts/LanguageContext";
 import { limitSizeService } from "../services/limitSizeService";
+import MailChecklistDetailSettings from "../components/MailChecklistDetailSettings";
+import MailChecklistDetailManagement from "../components/MailChecklistDetailManagement";
+import MailSignupSettings from "../components/MailSignupSettings";
+import MailSignupManagement from "../components/MailSignupManagement";
+import MailRecipientManagement from "../components/MailRecipientManagement";
+import MailImprovementDoneSettings from "../components/MailImprovementDoneSettings";
 
 const { Sider, Content } = Layout;
 
@@ -92,10 +98,14 @@ function FileLimitSection() {
       // Update localStorage as fallback
       localStorage.setItem("maxFileSizeMB", values.maxFileSize.toString());
       setCurrentLimit(values.maxFileSize);
-      message.success(t.saved);
+      notification.success({
+        message: lang === 'vi' ? 'Hệ thống' : '系统',
+        description: t.saved,
+        placement: 'bottomRight'
+      });
     } catch (error) {
       console.error('Error saving file upload limit:', error);
-      message.error(error.response?.data?.error || 'Có lỗi xảy ra khi lưu cài đặt!');
+      notification.error({ message: lang === 'vi' ? 'Hệ thống' : '系统', description: error.response?.data?.error || 'Có lỗi xảy ra khi lưu cài đặt!', placement: 'bottomRight' });
     } finally {
       setLoading(false);
     }
@@ -153,12 +163,22 @@ export default function SettingsPage() {
       menuTitle: "Cài đặt hệ thống",
       fileLimit: "Giới hạn kích thước file upload (MB)",
       mail: "Cài đặt thông báo mail sops",
+      mailManage: "Quản lý danh sách mail SOPs",
+      mailChecklistDetail: "Thông báo hoàn thành checklistdetail",
+      mailChecklistDetailManage: "Quản lý danh sách mail checklistdetail",
+      mailSignup: "Thông báo nhận mail đăng ký",
+      mailSignupManage: "Quản lý danh sách mail đăng ký",
       building: "Tính năng đang được phát triển.",
     },
     zh: {
       menuTitle: "系统设置",
       fileLimit: "文件上传大小限制 (MB)",
       mail: "SOPS 邮件通知设置",
+      mailManage: "管理SOPs邮件列表",
+      mailChecklistDetail: "事件管理详情完成邮件通知设置",
+      mailChecklistDetailManage: "管理清单详情邮件列表",
+      mailSignup: "注册邮件通知设置",
+      mailSignupManage: "管理注册邮件列表",
       building: "该功能正在开发中。",
     },
   };
@@ -169,10 +189,34 @@ export default function SettingsPage() {
   const menuItems = [
     { key: "file", icon: <HddOutlined />, label: t.fileLimit },
     { key: "mail", icon: <MailOutlined />, label: t.mail },
+    { key: "mailManage", icon: <UserOutlined />, label: t.mailManage },
+    { key: "mailChecklistDetail", icon: <MailOutlined />, label: t.mailChecklistDetail },
+    { key: "mailChecklistDetailManage", icon: <UserOutlined />, label: t.mailChecklistDetailManage },
+    { key: "mailSignup", icon: <MailOutlined />, label: t.mailSignup },
+    { key: "mailSignupManage", icon: <UserOutlined />, label: t.mailSignupManage },
+    { key: "mailImprovementDone", icon: <MailOutlined />, label: "Thông báo mail cải thiện" },
   ];
 
   const renderContent = () => {
     if (selectedKey === "file") return <FileLimitSection />;
+    if (selectedKey === "mailManage") {
+      return <MailRecipientManagement />;
+    }
+    if (selectedKey === "mailChecklistDetail") {
+      return <MailChecklistDetailSettings />;
+    }
+    if (selectedKey === "mailChecklistDetailManage") {
+      return <MailChecklistDetailManagement />;
+    }
+    if (selectedKey === "mailSignup") {
+      return <MailSignupSettings />;
+    }
+    if (selectedKey === "mailSignupManage") {
+      return <MailSignupManagement />;
+    }
+    if (selectedKey === "mailImprovementDone") {
+      return <MailImprovementDoneSettings />;
+    }
     return (
       <Card title={t.mail} bordered>
         <div>{t.building}</div>

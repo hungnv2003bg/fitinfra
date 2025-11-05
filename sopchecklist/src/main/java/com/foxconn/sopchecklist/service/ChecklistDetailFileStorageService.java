@@ -35,7 +35,6 @@ public class ChecklistDetailFileStorageService {
     @Value("${ftp.password:}")
     private String ftpPassword;
 
-    // Sử dụng FTP directory riêng cho ChecklistDetail
     @Value("${ftp.checklist-upload-dir:upload_fitchecklist}")
     private String ftpUploadDir;
 
@@ -68,7 +67,7 @@ public class ChecklistDetailFileStorageService {
         if (sanitizedBase.isEmpty()) sanitizedBase = "file";
         String filename = sanitizedBase + ext.toLowerCase();
 
-        // When FTP is enabled, upload directly to FTP and do NOT persist a local copy
+       
         if (useFtp) {
             try (InputStream in = file.getInputStream()) {
                 uploadToFtpStream(safeFolder, filename, in);
@@ -76,7 +75,7 @@ public class ChecklistDetailFileStorageService {
                 throw new IOException("FTP upload failed: " + e.getMessage(), e);
             }
         } else {
-            // Local storage path (used only when FTP disabled)
+            
             Path targetDir = this.rootLocation.resolve(safeFolder);
             Files.createDirectories(targetDir);
 
@@ -132,8 +131,7 @@ public class ChecklistDetailFileStorageService {
             }
             ftp.enterLocalPassiveMode();
             ftp.setFileType(FTP.BINARY_FILE_TYPE);
-
-            // Sử dụng FTP directory riêng cho ChecklistDetail
+       
             changeOrMakeDirectories(ftp, ftpUploadDir, dateFolder);
 
             try (InputStream input = Files.newInputStream(localFile)) {

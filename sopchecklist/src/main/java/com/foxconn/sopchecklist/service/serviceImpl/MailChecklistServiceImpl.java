@@ -1,42 +1,64 @@
 package com.foxconn.sopchecklist.service.serviceImpl;
 
-import com.foxconn.sopchecklist.entity.ChecklistCronMail;
+import com.foxconn.sopchecklist.entity.CronMailAll;
 import com.foxconn.sopchecklist.entity.ChecklistDetail;
 import com.foxconn.sopchecklist.entity.Group;
+import com.foxconn.sopchecklist.entity.TypeCronMail;
 import com.foxconn.sopchecklist.entity.Users;
-import com.foxconn.sopchecklist.repository.ChecklistMailRepository;
+import com.foxconn.sopchecklist.repository.CronMailAllRepository;
 import com.foxconn.sopchecklist.repository.GroupRepository;
+import com.foxconn.sopchecklist.repository.TypeCronMailRepository;
 import com.foxconn.sopchecklist.repository.UsersRepository;
 import com.foxconn.sopchecklist.service.MailChecklistService;
 import com.foxconn.sopchecklist.service.TimeService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 public class MailChecklistServiceImpl implements MailChecklistService {
 
-    private final ChecklistMailRepository mailRepository;
+    private final CronMailAllRepository mailRepository;
     private final GroupRepository groupRepository;
     private final UsersRepository usersRepository;
+    private final TypeCronMailRepository typeCronMailRepository;
     private final TimeService timeService;
 
-    public MailChecklistServiceImpl(ChecklistMailRepository mailRepository,
+    @Value("${app.public.url:http://10.228.64.77:3000}")
+    private String appPublicUrl;
+
+    public MailChecklistServiceImpl(CronMailAllRepository mailRepository,
                                     GroupRepository groupRepository,
                                     UsersRepository usersRepository,
+                                    TypeCronMailRepository typeCronMailRepository,
                                     TimeService timeService) {
         this.mailRepository = mailRepository;
         this.groupRepository = groupRepository;
         this.usersRepository = usersRepository;
+        this.typeCronMailRepository = typeCronMailRepository;
         this.timeService = timeService;
     }
 
     @Override
-    public ChecklistCronMail queueChecklistDetailMail(ChecklistDetail detail) {
+    public CronMailAll queueChecklistDetailMail(ChecklistDetail detail) {
         if (detail == null) return null;
+        
+        // Tìm type cho checklist mail
+        TypeCronMail checklistType = typeCronMailRepository.findByTypeName("CHECKLIST");
+        if (checklistType == null) {
+            // Nếu chưa có type CHECKLIST, tạo mới
+            checklistType = new TypeCronMail();
+            checklistType.setTypeName("CHECKLIST");
+            checklistType.setDescription("Mail thông báo checklist");
+            checklistType.setEnabled(true);
+            checklistType.setCreatedAt(timeService.nowVietnam());
+            checklistType.setUpdatedAt(timeService.nowVietnam());
+            checklistType = typeCronMailRepository.save(checklistType);
+        }
+        
         String toCsv = resolveRecipients(detail.getImplementer());
         if (toCsv == null || toCsv.trim().isEmpty()) {
             // Không có người nhận, vẫn ghi hàng đợi để thấy lỗi
@@ -46,18 +68,95 @@ public class MailChecklistServiceImpl implements MailChecklistService {
         String subject = buildSubject(detail);
         String body = buildBody(detail);
 
-        ChecklistCronMail mail = new ChecklistCronMail();
+        CronMailAll mail = new CronMailAll();
+        mail.setTypeId(checklistType.getId());
         mail.setMailTo(toCsv);
         mail.setMailCC("");
         mail.setMailBCC("");
         mail.setSubject(subject);
         mail.setBody(body);
-        mail.setStatus("pending");
+        mail.setStatus("PENDING");
         mail.setRetryCount(0);
         mail.setLastError(null);
-        mail.setChecklistDetailId(detail.getId());
+        mail.setReferenceId(detail.getId()); // Sử dụng referenceId thay vì checklistDetailId
         mail.setCreatedAt(timeService.nowVietnam());
         return mailRepository.save(mail);
+    }
+
+    @Override
+    public CronMailAll queueChecklistReminderMail(ChecklistDetail detail) {
+        if (detail == null) return null;
+
+        // Lấy/khởi tạo type CHECKLIST (dùng chung với mail từ biểu tượng chuông)
+        TypeCronMail checklistType = typeCronMailRepository.findByTypeName("CHECKLIST");
+        if (checklistType == null) {
+            checklistType = new TypeCronMail();
+            checklistType.setTypeName("CHECKLIST");
+            checklistType.setDescription("Mail thông báo checklist");
+            checklistType.setEnabled(true);
+            checklistType.setCreatedAt(timeService.nowVietnam());
+            checklistType.setUpdatedAt(timeService.nowVietnam());
+            checklistType = typeCronMailRepository.save(checklistType);
+        }
+
+        String toCsv = resolveRecipients(detail.getImplementer());
+        if (toCsv == null) toCsv = "";
+
+        String subject = buildReminderSubject(detail);
+        String body = buildReminderBody(detail);
+
+        CronMailAll mail = new CronMailAll();
+        mail.setTypeId(checklistType.getId());
+        mail.setMailTo(toCsv);
+        mail.setMailCC("");
+        mail.setMailBCC("");
+        mail.setSubject(subject);
+        mail.setBody(body);
+        mail.setStatus("PENDING");
+        mail.setRetryCount(0);
+        mail.setLastError(null);
+        mail.setReferenceId(detail.getId());
+        mail.setCreatedAt(timeService.nowVietnam());
+        return mailRepository.save(mail);
+    }
+
+    private String buildReminderSubject(ChecklistDetail d) {
+        String task = d.getTaskName() != null ? d.getTaskName() : "Checklist";
+        return "Công việc cần phải hoàn thành gấp: " + task;
+    }
+
+    private String buildReminderBody(ChecklistDetail d) {
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+        String task = safe(d.getTaskName());
+        String content = safe(d.getWorkContent());
+        String implementer = getImplementerDisplay(d.getImplementer());
+        String created = d.getCreatedAt() != null ? d.getCreatedAt().format(fmt) : "";
+        String deadline = d.getDeadlineAt() != null ? d.getDeadlineAt().format(fmt) : "";
+
+        StringBuilder body = new StringBuilder();
+        body.append("<div style=\"font-family:Arial,Helvetica,sans-serif;color:#333;line-height:1.6;\">");
+        body.append("<h2 style=\"margin:0 0 12px;color:#d4380d;\">Công việc cần hoàn thành gấp</h2>");
+        body.append("<table style=\"border-collapse:collapse;width:100%;\">");
+        row(body, "Tên công việc", task);
+        row(body, "Nội dung công việc", content);
+        row(body, "Người thực hiện", implementer);
+        row(body, "Ngày tạo", created);
+        row(body, "Hạn hoàn thành", deadline);
+        row(body, "Trạng thái", getStatusDisplay(d.getStatus()));
+        body.append("</table>");
+        try {
+            String appBase = appPublicUrl;
+            Long detailId = d.getId();
+            if (detailId != null) {
+                String link = appBase + "/checklist-detail/" + detailId;
+                body.append("<p style=\"margin-top:12px;\"><a href=\"")
+                        .append(link)
+                        .append("\" style=\"display:inline-block;background:#d4380d;color:#fff;padding:8px 12px;border-radius:4px;text-decoration:none;\">Mở chi tiết checklist</a></p>");
+            }
+        } catch (Exception ignore) {}
+        body.append("<p><strong>Vui lòng hoàn thành sớm nhất có thể.</strong></p>");
+        body.append("</div>");
+        return body.toString();
     }
 
     private String resolveRecipients(String implementer) {
@@ -131,32 +230,30 @@ public class MailChecklistServiceImpl implements MailChecklistService {
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
         String task = safe(d.getTaskName());
         String content = safe(d.getWorkContent());
-        String implementer = safe(d.getImplementer());
-        String scheduled = d.getScheduledAt() != null ? d.getScheduledAt().format(fmt) : "";
+        String implementer = getImplementerDisplay(d.getImplementer());
         String created = d.getCreatedAt() != null ? d.getCreatedAt().format(fmt) : "";
         String deadline = d.getDeadlineAt() != null ? d.getDeadlineAt().format(fmt) : "";
 
         StringBuilder body = new StringBuilder();
         body.append("<div style=\"font-family:Arial,Helvetica,sans-serif;color:#333;line-height:1.6;\">");
-        body.append("<h2 style=\"margin:0 0 12px;\">Checklist mới được tạo</h2>");
+        body.append("<h2 style=\"margin:0 0 12px;\">Công việc mới được tạo</h2>");
         body.append("<table style=\"border-collapse:collapse;width:100%;\">");
         row(body, "Tên công việc", task);
         row(body, "Nội dung công việc", content);
         row(body, "Người thực hiện", implementer);
         row(body, "Ngày tạo", created);
-        row(body, "Lịch thực hiện", scheduled);
         row(body, "Hạn hoàn thành", deadline);
+        row(body, "Trạng thái", getStatusDisplay(d.getStatus()));
+        
         body.append("</table>");
 
-        // Deep link tới trang checklist detail
+        // Deep link tới trang checklist detail cụ thể
         try {
-            String appBase = System.getenv("APP_PUBLIC_URL");
-            if (appBase == null || appBase.trim().isEmpty()) {
-                appBase = "http://" + java.net.InetAddress.getLocalHost().getHostAddress() + ":3000";
-            }
-            Long checklistId = d.getChecklist() != null ? d.getChecklist().getId() : null;
-            if (checklistId != null) {
-                String link = appBase + "/checklist/" + checklistId + "/details";
+            // Use configured URL from application.properties
+            String appBase = appPublicUrl;
+            Long detailId = d.getId();
+            if (detailId != null) {
+                String link = appBase + "/checklist-detail/" + detailId;
                 body.append("<p style=\"margin-top:12px;\"><a href=\"")
                         .append(link)
                         .append("\" style=\"display:inline-block;background:#1677ff;color:#fff;padding:8px 12px;border-radius:4px;text-decoration:none;\">Mở chi tiết checklist</a></p>");
@@ -173,6 +270,66 @@ public class MailChecklistServiceImpl implements MailChecklistService {
         body.append("<td style=\"border:1px solid #ddd;padding:8px;background:#f5f5f5;\">").append(escapeHtml(name)).append("</td>");
         body.append("<td style=\"border:1px solid #ddd;padding:8px;\">").append(escapeHtml(value)).append("</td>");
         body.append("</tr>");
+    }
+
+    private String getImplementerDisplay(String implementer) {
+        if (implementer == null || implementer.trim().isEmpty()) {
+            return "-";
+        }
+        
+        // Nếu là user:ID format, tìm user thật
+        if (implementer.startsWith("user:")) {
+            try {
+                String userId = implementer.substring(5);
+                Users user = usersRepository.findById(Integer.parseInt(userId)).orElse(null);
+                if (user != null && user.getFullName() != null) {
+                    return user.getFullName();
+                }
+            } catch (Exception e) {
+                // Ignore parsing errors
+            }
+        }
+        
+        // Nếu là group:ID format, tìm group thật
+        if (implementer.startsWith("group:")) {
+            try {
+                String groupId = implementer.substring(6);
+                Group group = groupRepository.findById(Long.parseLong(groupId)).orElse(null);
+                if (group != null && group.getName() != null) {
+                    return group.getName();
+                }
+            } catch (Exception e) {
+                // Ignore parsing errors
+            }
+        }
+        
+        // Nếu là email, tìm user theo email
+        if (implementer.contains("@")) {
+            Users user = usersRepository.findByEmail(implementer).orElse(null);
+            if (user != null && user.getFullName() != null) {
+                return user.getFullName();
+            }
+        }
+        
+        // Fallback: trả về implementer gốc
+        return implementer;
+    }
+    
+    private String getStatusDisplay(String status) {
+        if (status == null) return "Chưa xác định";
+        
+        switch (status.toUpperCase()) {
+            case "IN_PROGRESS":
+            case "PENDING":
+                return "Đang xử lý";
+            case "COMPLETED":
+            case "DONE":
+                return "Hoàn thành";
+            case "CANCELLED":
+                return "Đã hủy";
+            default:
+                return "Chưa xác định";
+        }
     }
 
     private static String safe(String s) { return s == null ? "" : s; }

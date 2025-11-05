@@ -7,15 +7,22 @@ import com.foxconn.sopchecklist.entity.Improvements;
 import com.foxconn.sopchecklist.repository.ChecklistDetailRepository;
 import com.foxconn.sopchecklist.repository.ChecklistsRepository;
 import com.foxconn.sopchecklist.repository.ImprovementsRepository;
+import com.foxconn.sopchecklist.repository.TypeCronMailRepository;
+import com.foxconn.sopchecklist.repository.CronMailAllRepository;
+import com.foxconn.sopchecklist.entity.CronMailAll;
 import com.foxconn.sopchecklist.service.ChecklistDetailFileStorageService;
+import com.foxconn.sopchecklist.service.MailChecklistDetailCompletionService;
 import com.foxconn.sopchecklist.service.TimeService;
+import com.foxconn.sopchecklist.service.MailImprovementCreationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/checklist-details")
@@ -26,23 +33,64 @@ public class ChecklistDetailController {
     private final ChecklistsRepository checklistsRepository;
     private final TimeService timeService;
     private final ImprovementsRepository improvementsRepository;
-    
+    private final MailChecklistDetailCompletionService mailCompletionService;
+    private final com.foxconn.sopchecklist.service.MailChecklistService mailChecklistService;
+    private final MailImprovementCreationService mailImprovementCreationService;
     
     @Autowired
     private ChecklistDetailFileStorageService fileStorageService;
 
-    public ChecklistDetailController(ChecklistDetailRepository repository, ChecklistsRepository checklistsRepository, TimeService timeService, ImprovementsRepository improvementsRepository) {
+    @Autowired(required = false)
+    private com.foxconn.sopchecklist.service.serviceImpl.ChecklistReminderScheduler reminderScheduler;
+
+    @Autowired
+    private TypeCronMailRepository typeCronMailRepository;
+
+    @Autowired
+    private CronMailAllRepository cronMailAllRepository;
+
+    public ChecklistDetailController(ChecklistDetailRepository repository, ChecklistsRepository checklistsRepository, TimeService timeService, ImprovementsRepository improvementsRepository, MailChecklistDetailCompletionService mailCompletionService, com.foxconn.sopchecklist.service.MailChecklistService mailChecklistService, MailImprovementCreationService mailImprovementCreationService) {
         this.repository = repository;
         this.checklistsRepository = checklistsRepository;
         this.timeService = timeService;
         this.improvementsRepository = improvementsRepository;
+        this.mailCompletionService = mailCompletionService;
+        this.mailChecklistService = mailChecklistService;
+        this.mailImprovementCreationService = mailImprovementCreationService;
     }
 
     @GetMapping
-    public List<ChecklistDetail> findAll(@RequestParam(value = "parentId", required = false) Long parentId) {
+    public List<ChecklistDetail> findAll(
+            @RequestParam(value = "parentId", required = false) Long parentId,
+            @RequestParam(value = "status", required = false) String status,
+            @RequestParam(value = "groupId", required = false) Long groupId,
+            @RequestParam(value = "q", required = false) String q
+    ) {
         if (parentId != null) {
             return checklistsRepository.findById(parentId)
-                    .map(repository::findByChecklist)
+                    .map(cl -> {
+                        String implementer = (groupId != null) ? ("group:" + groupId) : null;
+                        if (q != null && !q.isEmpty()) {
+                            if (status != null && implementer != null) {
+                                return repository.searchByChecklistAndStatusAndImplementerAndQOrderByCreatedAtDesc(cl, status, implementer, q);
+                            } else if (status != null) {
+                                return repository.searchByChecklistAndStatusAndQOrderByCreatedAtDesc(cl, status, q);
+                            } else if (implementer != null) {
+                                return repository.searchByChecklistAndImplementerAndQOrderByCreatedAtDesc(cl, implementer, q);
+                            } else {
+                                return repository.searchByChecklistAndQOrderByCreatedAtDesc(cl, q);
+                            }
+                        } else {
+                            if (status != null && implementer != null) {
+                                return repository.findByChecklistAndStatusAndImplementerOrderByCreatedAtDesc(cl, status, implementer);
+                            } else if (status != null) {
+                                return repository.findByChecklistAndStatusOrderByCreatedAtDesc(cl, status);
+                            } else if (implementer != null) {
+                                return repository.findByChecklistAndImplementerOrderByCreatedAtDesc(cl, implementer);
+                            }
+                            return repository.findByChecklistOrderByCreatedAtDesc(cl);
+                        }
+                    })
                     .orElseGet(List::of);
         }
         return repository.findAll();
@@ -114,9 +162,34 @@ public class ChecklistDetailController {
     }
 
     @GetMapping("/by-checklist/{checklistId}")
-    public ResponseEntity<List<ChecklistDetail>> findByChecklist(@PathVariable Long checklistId) {
+    public ResponseEntity<List<ChecklistDetail>> findByChecklist(@PathVariable Long checklistId,
+                                                                 @RequestParam(value = "status", required = false) String status,
+                                                                 @RequestParam(value = "groupId", required = false) Long groupId,
+                                                                 @RequestParam(value = "q", required = false) String q) {
         return checklistsRepository.findById(checklistId)
-                .map(repository::findByChecklist)
+                .map(cl -> {
+                    String implementer = (groupId != null) ? ("group:" + groupId) : null;
+                    if (q != null && !q.isEmpty()) {
+                        if (status != null && implementer != null) {
+                            return repository.searchByChecklistAndStatusAndImplementerAndQOrderByCreatedAtDesc(cl, status, implementer, q);
+                        } else if (status != null) {
+                            return repository.searchByChecklistAndStatusAndQOrderByCreatedAtDesc(cl, status, q);
+                        } else if (implementer != null) {
+                            return repository.searchByChecklistAndImplementerAndQOrderByCreatedAtDesc(cl, implementer, q);
+                        } else {
+                            return repository.searchByChecklistAndQOrderByCreatedAtDesc(cl, q);
+                        }
+                    } else {
+                        if (status != null && implementer != null) {
+                            return repository.findByChecklistAndStatusAndImplementerOrderByCreatedAtDesc(cl, status, implementer);
+                        } else if (status != null) {
+                            return repository.findByChecklistAndStatusOrderByCreatedAtDesc(cl, status);
+                        } else if (implementer != null) {
+                            return repository.findByChecklistAndImplementerOrderByCreatedAtDesc(cl, implementer);
+                        }
+                        return repository.findByChecklistOrderByCreatedAtDesc(cl);
+                    }
+                })
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -137,6 +210,13 @@ public class ChecklistDetailController {
                 // If status is COMPLETED, ensure lastEditedAt is set for completion date
                 if ("COMPLETED".equals(newStatus) || "DONE".equals(newStatus)) {
                     existed.setLastEditedAt(timeService.nowVietnam());
+                    // Gửi mail thông báo khi hoàn thành checklist detail
+                    try {
+                        mailCompletionService.queueChecklistDetailCompletionMail(existed);
+                    } catch (Exception e) {
+                        // Log error nhưng không làm fail transaction
+                        System.err.println("Failed to queue completion mail for checklist detail " + existed.getId() + ": " + e.getMessage());
+                    }
                 }
             }
             if (updates.containsKey("uploadFile")) existed.setUploadFile((String) updates.get("uploadFile"));
@@ -148,25 +228,26 @@ public class ChecklistDetailController {
                 // Cập nhật improvement dựa trên nội dung abnormalInfo
                 String checklistDetailId = String.valueOf(existed.getId());
                 
-                // Tìm improvement hiện có cho checklist detail này
+                // Chỉ tìm improvement hiện có cho checklist detail này theo checklistDetailId
                 Improvements existingImprovement = improvementsRepository
                         .findFirstByChecklistDetailId(checklistDetailId)
                         .orElse(null);
-
-                // Fallback: Nếu không tìm thấy theo checklistDetailId (do bản ghi cũ chưa có),
-                // tìm bản ghi improvement mới nhất theo cùng checklist và cùng tên công việc (taskName)
-                if (existingImprovement == null && existed.getChecklist() != null) {
-                    existingImprovement = improvementsRepository
-                            .findFirstByChecklist_IdAndCategoryOrderByCreatedAtDesc(existed.getChecklist().getId(), existed.getTaskName())
-                            .orElse(null);
-                }
                 
                 if (existingImprovement != null) {
                     // Cập nhật improvement hiện có
+                    boolean hadEmptyBefore = existingImprovement.getIssueDescription() == null || existingImprovement.getIssueDescription().trim().isEmpty();
                     if (newAbnormalInfo != null && !newAbnormalInfo.trim().isEmpty()) {
                         // Có nội dung: cập nhật issueDescription
                         existingImprovement.setIssueDescription(newAbnormalInfo);
-                        improvementsRepository.save(existingImprovement);
+                        Improvements savedImprovement = improvementsRepository.save(existingImprovement);
+                        // Nếu trước đó chưa có nội dung, coi như lần đầu phát sinh -> gửi mail thông báo
+                        if (hadEmptyBefore) {
+                            try {
+                                mailImprovementCreationService.queueImprovementCreatedMail(existed, savedImprovement);
+                            } catch (Exception e) {
+                                System.err.println("Failed to queue improvement creation mail for checklist detail " + existed.getId() + ": " + e.getMessage());
+                            }
+                        }
                     }
                     // Không có nội dung: giữ nguyên issueDescription hiện tại (không cập nhật)
                 } else if (newAbnormalInfo != null && !newAbnormalInfo.trim().isEmpty()) {
@@ -251,6 +332,39 @@ public class ChecklistDetailController {
         }
     }
 
+    @PostMapping("/{id}/send-mail")
+    public ResponseEntity<Map<String, Object>> sendMail(@PathVariable Long id) {
+        Map<String, Object> result = new java.util.HashMap<>();
+        
+        try {
+            ChecklistDetail detail = repository.findById(id).orElse(null);
+            if (detail == null) {
+                result.put("success", false);
+                result.put("message", "Checklist detail not found");
+                return ResponseEntity.notFound().build();
+            }
+            
+            // Đây là nút nhắc việc: chỉ gửi khi chưa hoàn thành
+            if ("COMPLETED".equalsIgnoreCase(detail.getStatus()) || "DONE".equalsIgnoreCase(detail.getStatus())) {
+                result.put("success", false);
+                result.put("message", "Checklist detail đã hoàn thành, không thể gửi nhắc việc");
+                return ResponseEntity.badRequest().body(result);
+            }
+
+            // Gửi mail nhắc việc cần hoàn thành gấp
+            mailChecklistService.queueChecklistReminderMail(detail);
+            
+            result.put("success", true);
+            result.put("message", "Đã gửi mail nhắc việc cho checklist detail");
+            return ResponseEntity.ok(result);
+            
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("message", "Lỗi khi gửi mail: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(result);
+        }
+    }
+
     @DeleteMapping("/{id}")
     @Transactional
     public ResponseEntity<Void> delete(@PathVariable Long id) {
@@ -270,6 +384,89 @@ public class ChecklistDetailController {
             return ResponseEntity.noContent().build();
         }
         return ResponseEntity.notFound().build();
+    }
+
+    @PostMapping("/test-reminder-scheduler")
+    public ResponseEntity<Map<String, Object>> testReminderScheduler() {
+        Map<String, Object> result = new java.util.HashMap<>();
+        try {
+            if (reminderScheduler == null) {
+                result.put("success", false);
+                result.put("message", "ChecklistReminderScheduler is not available. Please ensure the scheduler is properly configured.");
+                return ResponseEntity.badRequest().body(result);
+            }
+            
+            reminderScheduler.checkAndSendReminders();
+            
+            result.put("success", true);
+            result.put("message", "Reminder scheduler executed successfully. Check logs for details.");
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("message", "Error executing reminder scheduler: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body(result);
+        }
+    }
+
+    @GetMapping("/debug-overdue")
+    public ResponseEntity<Map<String, Object>> debugOverdue() {
+        Map<String, Object> result = new java.util.HashMap<>();
+        try {
+            LocalDateTime now = timeService.nowVietnam();
+            result.put("currentTime", now.toString());
+            
+            // Kiểm tra TypeCronMail
+            com.foxconn.sopchecklist.entity.TypeCronMail checklistType = typeCronMailRepository.findByTypeName("CHECKLIST");
+            result.put("checklistTypeExists", checklistType != null);
+            if (checklistType != null) {
+                result.put("checklistTypeId", checklistType.getId());
+            } else {
+                result.put("checklistTypeId", null);
+                result.put("warning", "CHECKLIST type not found in TypeCronMail table");
+            }
+            
+            // Tìm checklist detail đến deadline
+            List<ChecklistDetail> overdueDetails = repository
+                    .findByDeadlineAtBeforeOrEqualAndStatusNotCompleted(now);
+            
+            result.put("overdueCount", overdueDetails.size());
+            result.put("overdueDetails", overdueDetails.stream().map(d -> {
+                Map<String, Object> detailInfo = new java.util.HashMap<>();
+                detailInfo.put("id", d.getId());
+                detailInfo.put("taskName", d.getTaskName());
+                detailInfo.put("deadlineAt", d.getDeadlineAt() != null ? d.getDeadlineAt().toString() : null);
+                detailInfo.put("status", d.getStatus());
+                detailInfo.put("implementer", d.getImplementer());
+                detailInfo.put("hasDeadline", d.getDeadlineAt() != null);
+                detailInfo.put("deadlinePassed", d.getDeadlineAt() != null && !d.getDeadlineAt().isAfter(now));
+                detailInfo.put("isNotCompleted", d.getStatus() == null || 
+                    (!d.getStatus().equals("COMPLETED") && !d.getStatus().equals("DONE")));
+                detailInfo.put("hasImplementer", d.getImplementer() != null && !d.getImplementer().trim().isEmpty());
+                
+                // Kiểm tra xem có mail reminder đã gửi trong 24h không
+                if (checklistType != null && d.getId() != null) {
+                    try {
+                        LocalDateTime twentyFourHoursAgo = now.minusHours(24);
+                        List<CronMailAll> recentReminders = 
+                            cronMailAllRepository.findReminderMailsByTypeIdAndReferenceIdAndCreatedAtAfter(
+                                checklistType.getId(), d.getId(), twentyFourHoursAgo);
+                        detailInfo.put("recentRemindersCount", recentReminders.size());
+                        detailInfo.put("willSkip", !recentReminders.isEmpty());
+                    } catch (Exception e) {
+                        detailInfo.put("recentRemindersError", e.getMessage());
+                    }
+                }
+                
+                return detailInfo;
+            }).collect(Collectors.toList()));
+            
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            result.put("error", e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body(result);
+        }
     }
     
     /**
@@ -299,19 +496,30 @@ public class ChecklistDetailController {
                 improvement.setIssueDescription(checklistDetail.getAbnormalInfo());
                 
                 // Người phụ trách (người thực hiện)
-                improvement.setResponsible(checklistDetail.getImplementer());
+                String implementer = checklistDetail.getImplementer();
+                if (implementer != null && !implementer.isEmpty()) {
+                    improvement.setResponsible(java.util.Collections.singletonList(implementer));
+                }
                 
                 // Trạng thái mặc định
                 improvement.setStatus("PENDING");
                 
-                // Tiến độ mặc định
+                // Tiến độ theo dõi ở bảng improvement_progress
+                // Đặt tiến độ mặc định = 0 để bảng Improvement hiển thị đúng từ đầu
                 improvement.setProgress(0);
                 
                 // Thời gian tạo
                 improvement.setCreatedAt(timeService.nowVietnam());
                 
                 // Lưu improvement record
-                improvementsRepository.save(improvement);
+                Improvements savedImprovement = improvementsRepository.save(improvement);
+                
+                // Sau khi tạo improvement từ bất thường, xếp hàng gửi mail thông báo
+                try {
+                    mailImprovementCreationService.queueImprovementCreatedMail(checklistDetail, savedImprovement);
+                } catch (Exception e) {
+                    System.err.println("Failed to queue improvement creation mail for checklist detail " + checklistDetail.getId() + ": " + e.getMessage());
+                }
                 
                 System.out.println("Created improvement record for checklist detail ID: " + checklistDetail.getId());
             }

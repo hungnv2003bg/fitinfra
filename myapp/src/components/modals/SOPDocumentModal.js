@@ -128,7 +128,7 @@ export default function SOPDocumentModal({ open, onCancel, onAdded, sopId }) {
       const response = await axios.post("/api/sop-documents", documentPayload);
       const responseData = response.data;
 
-      openNotification("success", "Hệ thống", "Thêm tài liệu thành công");
+      openNotification("success", lang === 'zh' ? "系统" : "Hệ thống", lang === 'zh' ? t.addSuccess : t.addSuccess);
       
 
       form.resetFields();
@@ -147,14 +147,21 @@ export default function SOPDocumentModal({ open, onCancel, onAdded, sopId }) {
       }, 500);
       
     } catch (err) {
-      let errorMessage = "Thêm tài liệu thất bại";
-      if (err?.response?.data) {
-        const data = err.response.data;
-        errorMessage = data.error || data.message || JSON.stringify(data);
+      let errorMessage = lang === 'zh' ? t.addFailed : t.addFailed;
+      const data = err?.response?.data;
+      if (data) {
+        const raw = data.error || data.message || '';
+        if (data.error === 'DUPLICATE_NAME' || /đã tồn tại|exists|duplicate/i.test(raw)) {
+          errorMessage = lang === 'zh'
+            ? `已存在 "${data.duplicateName || data.duplicateValue || ''}"，请使用其他名称。`
+            : `Đã tồn tại "${data.duplicateName || data.duplicateValue || ''}". Vui lòng chọn tên khác.`;
+        } else {
+          errorMessage = raw || (lang === 'zh' ? t.addFailed : t.addFailed);
+        }
       } else if (err?.message) {
         errorMessage = err.message;
       }
-      openNotification("error", "Hệ thống", errorMessage);
+      openNotification("error", lang === 'zh' ? "系统" : "Hệ thống", errorMessage);
     } finally {
       setIsLoading(false);
     }

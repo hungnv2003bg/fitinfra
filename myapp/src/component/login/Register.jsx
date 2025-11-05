@@ -117,7 +117,7 @@ function Register({ onSuccess }) {
 
             if (response && response.data) {
                 const newUser = response.data;
-                openNotification("success", t.registerSuccess, t.accountCreated);
+                openNotification("success", lang === 'vi' ? 'Hệ thống' : '系统', t.accountCreated);
                 form.resetFields();
                 onSuccess();
             } else {

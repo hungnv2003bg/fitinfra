@@ -17,10 +17,16 @@ export default function AuthButtons() {
     const [selectedSettingKey, setSelectedSettingKey] = useState('file');
     const [form] = Form.useForm();
     const [formMail] = Form.useForm();
+    const [formMailChecklistDone] = Form.useForm();
+    const [formMailSignup] = Form.useForm();
+    const [formMailImprovementDone] = Form.useForm();
     const [loading, setLoading] = useState(false);
     const [currentLimit, setCurrentLimit] = useState(null);
     const [limitId, setLimitId] = useState(null);
     const mailLoadedRef = useRef(false);
+    const mailChecklistLoadedRef = useRef(false);
+    const mailSignupLoadedRef = useRef(false);
+    const mailImprovementLoadedRef = useRef(false);
 
     const handleLogoutClick = () => {
         dispatch(userSlice.actions.dangXuat());
@@ -58,6 +64,8 @@ export default function AuthButtons() {
 
     const handleSettings = async () => {
         mailLoadedRef.current = false;
+        mailChecklistLoadedRef.current = false;
+        mailSignupLoadedRef.current = false;
         setSelectedSettingKey('file');
         setIsSettingsModalVisible(true);
         await loadCurrentLimit();
@@ -65,20 +73,88 @@ export default function AuthButtons() {
 
     const loadMailRecipients = async () => {
         if (mailLoadedRef.current) return;
+        console.log('DEBUG: loadMailRecipients called');
         try {
-            const res = await axios.get('/api/mail-recipients');
+            const res = await axios.get('/api/mail-recipients/by-event', { params: { eventType: 'SOP' } });
+            console.log('DEBUG: SOPs API response:', res.data);
             const list = Array.isArray(res.data) ? res.data : [];
             const mailTo = list.filter(r => r && r.enabled && r.type === 'TO').map(r => r.email).join(', ');
             const mailCc = list.filter(r => r && r.enabled && r.type === 'CC').map(r => r.email).join(', ');
             const mailBcc = list.filter(r => r && r.enabled && r.type === 'BCC').map(r => r.email).join(', ');
+            console.log('DEBUG: SOPs final values - TO:', mailTo, 'CC:', mailCc, 'BCC:', mailBcc);
             formMail.setFieldsValue({ mailTo, mailCc, mailBcc });
             mailLoadedRef.current = true;
         } catch (e) {
+            console.error('Error loading SOPs mail recipients:', e);
             const mailTo = localStorage.getItem('mailTo') || '';
             const mailCc = localStorage.getItem('mailCc') || '';
             const mailBcc = localStorage.getItem('mailBcc') || '';
+            console.log('DEBUG: SOPs fallback values from localStorage - TO:', mailTo, 'CC:', mailCc, 'BCC:', mailBcc);
             formMail.setFieldsValue({ mailTo, mailCc, mailBcc });
             mailLoadedRef.current = true;
+        }
+    };
+
+    const loadMailChecklistDetailRecipients = async () => {
+        if (mailChecklistLoadedRef.current) return;
+        console.log('DEBUG: loadMailChecklistDetailRecipients called');
+        try {
+            const res = await axios.get('/api/mail-recipients-checklist-detail');
+            console.log('DEBUG: Checklist API response:', res.data);
+            const list = Array.isArray(res.data) ? res.data : [];
+            const mailTo = list.filter(r => r && r.enabled && r.type === 'TO').map(r => r.email).join(', ');
+            const mailCc = list.filter(r => r && r.enabled && r.type === 'CC').map(r => r.email).join(', ');
+            const mailBcc = list.filter(r => r && r.enabled && r.type === 'BCC').map(r => r.email).join(', ');
+            console.log('DEBUG: Checklist final values - TO:', mailTo, 'CC:', mailCc, 'BCC:', mailBcc);
+            formMailChecklistDone.setFieldsValue({ mailTo, mailCc, mailBcc });
+            mailChecklistLoadedRef.current = true;
+        } catch (e) {
+            console.error('Error loading checklist detail mail recipients:', e);
+            const mailTo = localStorage.getItem('mailChecklistTo') || '';
+            const mailCc = localStorage.getItem('mailChecklistCc') || '';
+            const mailBcc = localStorage.getItem('mailChecklistBcc') || '';
+            console.log('DEBUG: Checklist fallback values from localStorage - TO:', mailTo, 'CC:', mailCc, 'BCC:', mailBcc);
+            formMailChecklistDone.setFieldsValue({ mailTo, mailCc, mailBcc });
+            mailChecklistLoadedRef.current = true;
+        }
+    };
+
+    const loadMailSignupRecipients = async () => {
+        if (mailSignupLoadedRef.current) return;
+        console.log('DEBUG: loadMailSignupRecipients called');
+        try {
+            const res = await axios.get('/api/mail-recipients-signup');
+            console.log('DEBUG: Signup API response:', res.data);
+            const list = Array.isArray(res.data) ? res.data : [];
+            const mailTo = list.filter(r => r && r.enabled && r.type === 'TO').map(r => r.email).join(', ');
+            const mailCc = list.filter(r => r && r.enabled && r.type === 'CC').map(r => r.email).join(', ');
+            const mailBcc = list.filter(r => r && r.enabled && r.type === 'BCC').map(r => r.email).join(', ');
+            console.log('DEBUG: Signup final values - TO:', mailTo, 'CC:', mailCc, 'BCC:', mailBcc);
+            formMailSignup.setFieldsValue({ mailTo, mailCc, mailBcc });
+            mailSignupLoadedRef.current = true;
+        } catch (e) {
+            console.error('Error loading signup mail recipients:', e);
+            const mailTo = localStorage.getItem('mailSignupTo') || '';
+            const mailCc = localStorage.getItem('mailSignupCc') || '';
+            const mailBcc = localStorage.getItem('mailSignupBcc') || '';
+            console.log('DEBUG: Signup fallback values from localStorage - TO:', mailTo, 'CC:', mailCc, 'BCC:', mailBcc);
+            formMailSignup.setFieldsValue({ mailTo, mailCc, mailBcc });
+            mailSignupLoadedRef.current = true;
+        }
+    };
+
+    const loadMailImprovementDoneRecipients = async () => {
+        if (mailImprovementLoadedRef.current) return;
+        try {
+            const res = await axios.get('/api/mail-recipients-improvement-done');
+            const list = Array.isArray(res.data) ? res.data : [];
+            const mailTo = list.filter(r => r && r.enabled && r.type === 'TO').map(r => r.email).join(', ');
+            const mailCc = list.filter(r => r && r.enabled && r.type === 'CC').map(r => r.email).join(', ');
+            const mailBcc = list.filter(r => r && r.enabled && r.type === 'BCC').map(r => r.email).join(', ');
+            formMailImprovementDone.setFieldsValue({ mailTo, mailCc, mailBcc });
+            mailImprovementLoadedRef.current = true;
+        } catch (e) {
+            mailImprovementLoadedRef.current = true;
         }
     };
 
@@ -88,7 +164,7 @@ export default function AuthButtons() {
             setLoading(true);
             
             if (limitId) {
-                // Update existing limit
+             
                 await limitSizeService.updateLimitSize(limitId, {
                     settingName: 'FILE_UPLOAD_LIMIT',
                     maxSizeMb: values.maxFileSize,
@@ -97,7 +173,7 @@ export default function AuthButtons() {
                     updatedBy: nguoiDung.userID
                 });
             } else {
-                // Create new limit
+              
                 await limitSizeService.createLimitSize({
                     settingName: 'FILE_UPLOAD_LIMIT',
                     maxSizeMb: values.maxFileSize,
@@ -106,17 +182,25 @@ export default function AuthButtons() {
                     createdBy: nguoiDung.userID
                 });
             }
-            
-            // Update localStorage as fallback
+     
+          
             localStorage.setItem('maxFileSizeMB', values.maxFileSize.toString());
             setCurrentLimit(values.maxFileSize);
             
             const successMessage = lang === 'vi' ? 'Cài đặt đã được lưu thành công!' : '设置已保存成功！';
-            notification.success({ message: successMessage, placement: 'bottomRight' });
+            notification.success({ 
+                message: lang === 'vi' ? 'Hệ thống' : '系统', 
+                description: successMessage, 
+                placement: 'bottomRight' 
+            });
         } catch (error) {
             console.error('Error saving file upload limit:', error);
             const errorMessage = error.response?.data?.error || 'Có lỗi xảy ra khi lưu cài đặt!';
-            notification.error({ message: errorMessage, placement: 'bottomRight' });
+            notification.error({ 
+                message: lang === 'vi' ? 'Hệ thống' : '系统', 
+                description: errorMessage, 
+                placement: 'bottomRight' 
+            });
         } finally {
             setLoading(false);
         }
@@ -128,7 +212,7 @@ export default function AuthButtons() {
 
     const hasAdminAccess = () => {
         if (!quyenList || quyenList.length === 0) return false;
-        // Only Admin can see settings
+        
         return quyenList.some(role => role === "ADMIN" || role === "ROLE_ADMIN");
     };
 
@@ -142,6 +226,8 @@ export default function AuthButtons() {
             requiredMessage: "Vui lòng nhập giới hạn kích thước file!",
             sizeRangeMessage: "Giới hạn phải từ 1 đến 1000 MB!",
             mailSetting: "Thông báo nhận mail SOPs",
+            mailChecklistDone: "Thông báo hoàn thành checklist",
+            mailSignup: "Thông báo nhận mail đăng ký",
             mailTo: "Danh sách mail nhận ",
             mailCc: "Danh sách mail cc",
             mailBcc: "Danh sách mail bcc"
@@ -155,6 +241,9 @@ export default function AuthButtons() {
             requiredMessage: "请输入文件大小限制！",
             sizeRangeMessage: "限制必须在1到1000 MB之间！",
             mailSetting: "SOPS 邮件通知设置",
+            mailChecklistDone: "事件管理完成邮件通知设置",
+            mailSignup: "注册邮件通知设置",
+            mailImprovementDone: "改善完成邮件通知设置",
             mailTo: "收件人邮箱（To）",
             mailCc: "抄送邮箱（CC）",
             mailBcc: "密送邮箱（BCC）"
@@ -240,13 +329,94 @@ export default function AuthButtons() {
                     title={settingsT.title}
                     open={isSettingsModalVisible}
                     confirmLoading={loading}
-                    onOk={selectedSettingKey === 'file' ? handleFileSizeOk : async () => {
+                    onOk={selectedSettingKey === 'file' ? handleFileSizeOk : 
+                          selectedSettingKey === 'mail' ? async () => {
                         const values = formMail.getFieldsValue();
                         localStorage.setItem('mailTo', values.mailTo || '');
                         localStorage.setItem('mailCc', values.mailCc || '');
                         localStorage.setItem('mailBcc', values.mailBcc || '');
                         try {
-                            await axios.post('/api/mail-recipients/replace', null, {
+                            await axios.post('/api/mail-recipients/replace-by-event', null, {
+                                params: {
+                                    eventType: 'sop',
+                                    to: values.mailTo || '',
+                                    cc: values.mailCc || '',
+                                    bcc: values.mailBcc || ''
+                                }
+                            });
+                            const successMessage = lang === 'vi' ? 'Cài đặt đã được lưu thành công!' : '设置已保存成功！';
+                            notification.success({ 
+                                message: lang === 'vi' ? 'Hệ thống' : '系统', 
+                                description: successMessage, 
+                                placement: 'bottomRight' 
+                            });
+                        } catch (e) {
+                            const errMsg = lang === 'vi' ? 'Lưu danh sách mail thất bại' : '保存邮件列表失败';
+                            notification.error({ 
+                                message: lang === 'vi' ? 'Hệ thống' : '系统', 
+                                description: errMsg, 
+                                placement: 'bottomRight' 
+                            });
+                        }
+                    } : selectedSettingKey === 'mailChecklistDone' ? async () => {
+                        const values = formMailChecklistDone.getFieldsValue();
+                        try {
+                            await axios.post('/api/mail-recipients-checklist-detail/replace', null, {
+                                params: {
+                                    to: values.mailTo || '',
+                                    cc: values.mailCc || '',
+                                    bcc: values.mailBcc || ''
+                                }
+                            });
+                            // Save to localStorage like SOPs
+                            localStorage.setItem('mailChecklistTo', values.mailTo || '');
+                            localStorage.setItem('mailChecklistCc', values.mailCc || '');
+                            localStorage.setItem('mailChecklistBcc', values.mailBcc || '');
+                            const successMessage = lang === 'vi' ? 'Cài đặt đã được lưu thành công!' : '设置已保存成功！';
+                            notification.success({ 
+                                message: lang === 'vi' ? 'Hệ thống' : '系统', 
+                                description: successMessage, 
+                                placement: 'bottomRight' 
+                            });
+                        } catch (e) {
+                            const errMsg = e?.response?.data?.error || (lang === 'vi' ? 'Có lỗi xảy ra khi lưu cài đặt!' : '保存设置时出错！');
+                            notification.error({ 
+                                message: lang === 'vi' ? 'Hệ thống' : '系统', 
+                                description: errMsg, 
+                                placement: 'bottomRight' 
+                            });
+                        }
+                    } : selectedSettingKey === 'mailSignup' ? async () => {
+                        const values = formMailSignup.getFieldsValue();
+                        try {
+                            await axios.post('/api/mail-recipients-signup/replace', null, {
+                                params: {
+                                    to: values.mailTo || '',
+                                    cc: values.mailCc || '',
+                                    bcc: values.mailBcc || ''
+                                }
+                            });
+                            localStorage.setItem('mailSignupTo', values.mailTo || '');
+                            localStorage.setItem('mailSignupCc', values.mailCc || '');
+                            localStorage.setItem('mailSignupBcc', values.mailBcc || '');
+                            const successMessage = lang === 'vi' ? 'Cài đặt đã được lưu thành công!' : '设置已保存成功！';
+                            notification.success({ 
+                                message: lang === 'vi' ? 'Hệ thống' : '系统', 
+                                description: successMessage, 
+                                placement: 'bottomRight' 
+                            });
+                        } catch (e) {
+                            const errMsg = e?.response?.data?.error || (lang === 'vi' ? 'Có lỗi xảy ra khi lưu cài đặt!' : '保存设置时出错！');
+                            notification.error({ 
+                                message: lang === 'vi' ? 'Hệ thống' : '系统', 
+                                description: errMsg, 
+                                placement: 'bottomRight' 
+                            });
+                        }
+                    } : selectedSettingKey === 'mailImprovementDone' ? async () => {
+                        const values = formMailImprovementDone.getFieldsValue();
+                        try {
+                            await axios.post('/api/mail-recipients-improvement-done/replace', null, {
                                 params: {
                                     to: values.mailTo || '',
                                     cc: values.mailCc || '',
@@ -254,11 +424,23 @@ export default function AuthButtons() {
                                 }
                             });
                             const successMessage = lang === 'vi' ? 'Cài đặt đã được lưu thành công!' : '设置已保存成功！';
-                            notification.success({ message: successMessage, placement: 'bottomRight' });
+                            notification.success({ 
+                                message: lang === 'vi' ? 'Hệ thống' : '系统', 
+                                description: successMessage, 
+                                placement: 'bottomRight' 
+                            });
                         } catch (e) {
-                            const errMsg = lang === 'vi' ? 'Lưu danh sách mail thất bại' : '保存邮件列表失败';
-                            notification.error({ message: errMsg, placement: 'bottomRight' });
+                            const errMsg = e?.response?.data?.error || (lang === 'vi' ? 'Có lỗi xảy ra khi lưu cài đặt!' : '保存设置时出错！');
+                            notification.error({ 
+                                message: lang === 'vi' ? 'Hệ thống' : '系统', 
+                                description: errMsg, 
+                                placement: 'bottomRight' 
+                            });
                         }
+                    } : async () => {
+                        // Handle other cases - placeholder for now
+                        const successMessage = lang === 'vi' ? 'Tính năng đang được phát triển!' : '功能正在开发中！';
+                        notification.info({ message: successMessage, placement: 'bottomRight' });
                     }}
                     onCancel={handleSettingsCancel}
                     okText={settingsT.save}
@@ -287,10 +469,49 @@ export default function AuthButtons() {
                                     border: '1px solid #f0f0f0',
                                     borderRadius: 6,
                                     cursor: 'pointer',
+                                    marginBottom: 12,
                                     background: selectedSettingKey === 'mail' ? '#e6f7ff' : '#fff'
                                 }}
                             >
                                 {settingsT.mailSetting}
+                            </div>
+                            <div
+                                onClick={async () => { setSelectedSettingKey('mailChecklistDone'); await loadMailChecklistDetailRecipients(); }}
+                                style={{
+                                    padding: 12,
+                                    border: '1px solid #f0f0f0',
+                                    borderRadius: 6,
+                                    cursor: 'pointer',
+                                    marginBottom: 12,
+                                    background: selectedSettingKey === 'mailChecklistDone' ? '#e6f7ff' : '#fff'
+                                }}
+                            >
+                                {settingsT.mailChecklistDone}
+                            </div>
+                            <div
+                                onClick={async () => { setSelectedSettingKey('mailImprovementDone'); await loadMailImprovementDoneRecipients(); }}
+                                style={{
+                                    padding: 12,
+                                    border: '1px solid #f0f0f0',
+                                    borderRadius: 6,
+                                    cursor: 'pointer',
+                                    marginBottom: 12,
+                                    background: selectedSettingKey === 'mailImprovementDone' ? '#e6f7ff' : '#fff'
+                                }}
+                            >
+                                {lang === 'vi' ? 'Thông báo mail cải thiện' : settingsT.mailImprovementDone}
+                            </div>
+                            <div
+                                onClick={async () => { setSelectedSettingKey('mailSignup'); await loadMailSignupRecipients(); }}
+                                style={{
+                                    padding: 12,
+                                    border: '1px solid #f0f0f0',
+                                    borderRadius: 6,
+                                    cursor: 'pointer',
+                                    background: selectedSettingKey === 'mailSignup' ? '#e6f7ff' : '#fff'
+                                }}
+                            >
+                                {settingsT.mailSignup}
                             </div>
                         </div>
                         <div style={{ flex: 1 }}>
@@ -321,6 +542,45 @@ export default function AuthButtons() {
                             )}
                             {selectedSettingKey === 'mail' && (
                                 <Form form={formMail} layout="vertical">
+                                    <Form.Item name="mailTo" label={settingsT.mailTo}>
+                                        <Input.TextArea rows={3} placeholder="user1@example.com, user2@example.com" />
+                                    </Form.Item>
+                                    <Form.Item name="mailCc" label={settingsT.mailCc}>
+                                        <Input.TextArea rows={3} placeholder="cc1@example.com, cc2@example.com" />
+                                    </Form.Item>
+                                    <Form.Item name="mailBcc" label={settingsT.mailBcc}>
+                                        <Input.TextArea rows={3} placeholder="bcc1@example.com, bcc2@example.com" />
+                                    </Form.Item>
+                                </Form>
+                            )}
+                            {selectedSettingKey === 'mailChecklistDone' && (
+                                <Form form={formMailChecklistDone} layout="vertical">
+                                    <Form.Item name="mailTo" label={settingsT.mailTo}>
+                                        <Input.TextArea rows={3} placeholder="user1@example.com, user2@example.com" />
+                                    </Form.Item>
+                                    <Form.Item name="mailCc" label={settingsT.mailCc}>
+                                        <Input.TextArea rows={3} placeholder="cc1@example.com, cc2@example.com" />
+                                    </Form.Item>
+                                    <Form.Item name="mailBcc" label={settingsT.mailBcc}>
+                                        <Input.TextArea rows={3} placeholder="bcc1@example.com, bcc2@example.com" />
+                                    </Form.Item>
+                                </Form>
+                            )}
+                            {selectedSettingKey === 'mailSignup' && (
+                                <Form form={formMailSignup} layout="vertical">
+                                    <Form.Item name="mailTo" label={settingsT.mailTo}>
+                                        <Input.TextArea rows={3} placeholder="user1@example.com, user2@example.com" />
+                                    </Form.Item>
+                                    <Form.Item name="mailCc" label={settingsT.mailCc}>
+                                        <Input.TextArea rows={3} placeholder="cc1@example.com, cc2@example.com" />
+                                    </Form.Item>
+                                    <Form.Item name="mailBcc" label={settingsT.mailBcc}>
+                                        <Input.TextArea rows={3} placeholder="bcc1@example.com, bcc2@example.com" />
+                                    </Form.Item>
+                                </Form>
+                            )}
+                            {selectedSettingKey === 'mailImprovementDone' && (
+                                <Form form={formMailImprovementDone} layout="vertical">
                                     <Form.Item name="mailTo" label={settingsT.mailTo}>
                                         <Input.TextArea rows={3} placeholder="user1@example.com, user2@example.com" />
                                     </Form.Item>

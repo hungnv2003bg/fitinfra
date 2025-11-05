@@ -44,6 +44,14 @@ public class UsersServiceImpl implements UsersService {
     }
 
     @Override
+    public List<Users> findByGroupId(Long groupId) {
+        if (groupId == null) {
+            return usersRepository.findAll();
+        }
+        return usersRepository.findDistinctByGroups_Id(groupId);
+    }
+
+    @Override
     public Users findByManv(String manv) {
         return usersRepository.findByManv(manv).orElse(null);
     }

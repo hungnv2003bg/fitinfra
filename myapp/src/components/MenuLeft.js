@@ -69,7 +69,7 @@ function MenuLeft() {
 
   const labels = {
     vi: { dashboard: "Dashboard", sops: "SOPS", checklist: "Checklist", improvement: "Improvement", account: "Account", groups: "Group" },
-    zh: { dashboard: "仪表盘", sops: "SOPS", checklist: "检查表", improvement: "改进", account: "账户", groups: "群组" }
+    zh: { dashboard: "仪表盘", sops: "SOPS", checklist: "事件管理", improvement: "問題管理", account: "账户", groups: "群组" }
   };
   const t = labels[lang];
 

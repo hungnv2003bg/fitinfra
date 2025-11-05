@@ -1,19 +1,16 @@
 import React, { useEffect, useState } from "react";
-import { Modal, Form, Input, DatePicker, notification, Select, InputNumber, Upload, Button, List, Tag } from "antd";
-import { UploadOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Modal, Form, Input, DatePicker, notification, Select } from "antd";
 import dayjs from 'dayjs';
 import axios from "../../plugins/axios";
 import { useSelector } from "react-redux";
 import API_CONFIG from "../../config/api";
-import { validateFileSize, formatFileSize } from "../../utils/fileUtils";
 
 export default function ImprovementEditModal({ open, record, onCancel, onSaved, groups = [], users = [] }) {
   const [form] = Form.useForm();
   const [api, contextHolder] = notification.useNotification();
   const { nguoiDung } = useSelector(state => state.user);
   const [improvementEvents, setImprovementEvents] = useState([]);
-  const [uploadedFiles, setUploadedFiles] = useState([]); // {name, url}
-  const [existingFiles, setExistingFiles] = useState([]); // record.files (FileInfo)
+  // Simplified: remove upload/progress fields
 
   // Helper functions để hiển thị tên group và user (same as in ImprovementPage)
   function getUserDisplayName(userId) {
@@ -51,7 +48,7 @@ export default function ImprovementEditModal({ open, record, onCancel, onSaved, 
     return responsible;
   }
 
-  // Helper để tạo options cho Select (groups và users)
+  // Helper để tạo options cho Select (groups và users cho người phụ trách)
   const createSelectOptions = () => {
     const groupOptions = groups.map(group => ({
       key: `group:${group.id}`,
@@ -66,6 +63,17 @@ export default function ImprovementEditModal({ open, record, onCancel, onSaved, 
     }));
     
     return [...groupOptions, ...userOptions];
+  };
+
+  // Helper để tạo options cho Select (chỉ users cho người phối hợp)
+  const createCollaboratorOptions = () => {
+    const userOptions = users.map(user => ({
+      key: `user:${user.userID}`,
+      value: `user:${user.userID}`,
+      label: user.fullName || user.manv || `User ${user.userID}`
+    }));
+    
+    return userOptions;
   };
 
   // Fetch improvement events
@@ -90,22 +98,16 @@ export default function ImprovementEditModal({ open, record, onCancel, onSaved, 
       form.setFieldsValue({
         category: record.category,
         issueDescription: record.issueDescription,
-        responsible: record.responsible,
+        responsible: Array.isArray(record.responsible) ? record.responsible : (record.responsible ? [record.responsible] : []),
         collaborators: Array.isArray(record.collaborators) ? record.collaborators : [],
         actionPlan: record.actionPlan,
         plannedDueAt: record.plannedDueAt ? dayjs(record.plannedDueAt) : null,
         note: record.note,
-        status: record.status,
-        progress: record.progress,
-        progressDetail: record.progressDetail,
         improvementEventId: record.improvementEventId || (record.improvementEvent ? record.improvementEvent.id : undefined),
       });
-      setExistingFiles(Array.isArray(record.files) ? record.files : []);
-      setUploadedFiles([]);
+      
     } else {
       form.resetFields();
-      setExistingFiles([]);
-      setUploadedFiles([]);
     }
   }, [record]);
 
@@ -131,28 +133,6 @@ export default function ImprovementEditModal({ open, record, onCancel, onSaved, 
       const values = await form.validateFields();
       
       // Tự động set completedAt khi trạng thái là DONE
-      let completedAt = null;
-      if (values.status === 'DONE') {
-        completedAt = new Date().toISOString();
-      } else if (record && record.completedAt) {
-        // Giữ nguyên completedAt nếu đã có và trạng thái không phải DONE
-        completedAt = record.completedAt;
-      }
-      
-      // Upload files mới nếu có
-      let newUploadedFiles = [];
-      if (uploadedFiles.length > 0) {
-        for (const file of uploadedFiles) {
-          if (file.originFileObj) {
-            const uploadResult = await uploadFile(file.originFileObj, values.category || record?.category);
-            newUploadedFiles.push({
-              name: uploadResult.name,
-              url: uploadResult.url,
-            });
-          }
-        }
-      }
-
       const patch = {
         category: values.category,
         issueDescription: values.issueDescription,
@@ -160,21 +140,9 @@ export default function ImprovementEditModal({ open, record, onCancel, onSaved, 
         collaborators: values.collaborators || [],
         actionPlan: values.actionPlan,
         plannedDueAt: values.plannedDueAt ? values.plannedDueAt.toISOString() : null,
-        completedAt,
         note: values.note,
-        status: values.status,
-        progress: values.progress != null ? Number(values.progress) : null,
-        progressDetail: values.progressDetail,
         improvementEvent: values.improvementEventId ? { id: values.improvementEventId } : null,
         lastEditedBy: nguoiDung?.userID, // Thêm thông tin người sửa cuối cùng
-        files: [
-          ...(Array.isArray(existingFiles) ? existingFiles.map(f => ({
-            name: f.name,
-            url: f.url,
-            uid: f.uid,
-          })) : []),
-          ...newUploadedFiles,
-        ],
       };
 
       await axios.patch(`/api/improvements/${encodeURIComponent(String(record.improvementID || record.id))}`, patch);
@@ -196,147 +164,68 @@ export default function ImprovementEditModal({ open, record, onCancel, onSaved, 
         onCancel={onCancel} 
         onOk={handleOk} 
         okText="Lưu"
-        width={650}
+        width={720}
         style={{ top: '70px' }}
         centered={false}
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="category" label="Hạng mục"><Input placeholder="Tên công việc" /></Form.Item>
-          
-          <Form.Item name="issueDescription" label="Nội dung công việc"><Input.TextArea rows={3} /></Form.Item>
-          <Form.Item name="responsible" label="Người phụ trách">
-            <Select 
-              placeholder="Tìm kiếm và chọn người phụ trách" 
-              showSearch
-              filterOption={(input, option) =>
-                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-              }
-              options={createSelectOptions()}
-            />
-          </Form.Item>
-          <Form.Item name="improvementEventId" label="Loại sự kiện">
-            <Select 
-              placeholder="Chọn loại sự kiện" 
-              allowClear
-              showSearch
-              filterOption={(input, option) =>
-                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-              }
-            >
-              {improvementEvents.map(event => (
-                <Select.Option key={event.id} value={event.id}>
-                  {event.eventName}
-                </Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
-          <Form.Item name="collaborators" label="Người phối hợp">
-            <Select 
-              mode="multiple"
-              placeholder="Tìm kiếm và chọn người phối hợp" 
-              showSearch
-              filterOption={(input, option) =>
-                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-              }
-              options={createSelectOptions()}
-            />
-          </Form.Item>
-          <Form.Item name="status" label="Trạng thái">
-            <Select options={[
-              { value: 'PENDING', label: 'Chưa thực hiện' }, 
-              { value: 'IN_PROGRESS', label: 'Đang thực hiện' }, 
-              { value: 'DONE', label: 'Hoàn thành' }
-            ]} />
-          </Form.Item>
-          <Form.Item name="plannedDueAt" label="Thời gian dự kiến hoàn thành"><DatePicker showTime style={{ width: '100%' }} format="DD/MM/YYYY HH:mm" /></Form.Item>
+          <Form.Item name="category" label="Hạng mục"><Input placeholder="Tên công việc" disabled /></Form.Item>
+
+          <Form.Item name="issueDescription" label="Nội dung cải thiện"><Input.TextArea rows={3} /></Form.Item>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Form.Item name="responsible" label="Người phụ trách">
+              <Select 
+                mode="multiple"
+                placeholder="Chọn người phụ trách" 
+                showSearch
+                filterOption={(input, option) =>
+                  (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                }
+                options={createCollaboratorOptions()}
+                maxTagCount="responsive"
+              />
+            </Form.Item>
+            <Form.Item name="collaborators" label="Người phối hợp">
+              <Select 
+                mode="tags"
+                placeholder="Nhập người phối hợp" 
+                showSearch
+                allowClear
+                filterOption={(input, option) =>
+                  (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                }
+                options={createCollaboratorOptions()}
+                dropdownStyle={{ maxHeight: 200, overflow: 'auto' }}
+                tokenSeparators={[',']}
+              />
+            </Form.Item>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Form.Item name="improvementEventId" label="Loại sự kiện">
+              <Select 
+                placeholder="Chọn loại sự kiện" 
+                allowClear
+                showSearch
+                filterOption={(input, option) =>
+                  (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                }
+              >
+                {improvementEvents.map(event => (
+                  <Select.Option key={event.id} value={event.id}>
+                    {event.eventName}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+            <Form.Item name="plannedDueAt" label="Thời gian dự kiến hoàn thành">
+              <DatePicker showTime style={{ width: '100%' }} format="DD/MM/YYYY HH:mm" />
+            </Form.Item>
+          </div>
+
           <Form.Item name="actionPlan" label="Hành động cải thiện"><Input.TextArea rows={3} /></Form.Item>
           <Form.Item name="note" label="Ghi chú"><Input.TextArea rows={3} /></Form.Item>
-          <Form.Item name="progress" label="Tiến độ (%)"><InputNumber min={0} max={100} style={{ width: 160 }} /></Form.Item>
-          <Form.Item name="progressDetail" label="Nội dung tiến độ"><Input.TextArea rows={3} placeholder="Mô tả chi tiết tiến độ hiện tại" /></Form.Item>
-
-          {/* Upload files */}
-          <Form.Item label="Tài liệu đính kèm">
-            {existingFiles?.length > 0 && (
-              <List
-                header={<div>File đã có</div>}
-                size="small"
-                dataSource={existingFiles}
-                style={{ marginBottom: 8 }}
-                renderItem={(f, i) => (
-                  <List.Item
-                    actions={[
-                      <Button 
-                        type="text" 
-                        danger 
-                        size="small" 
-                        icon={<DeleteOutlined />} 
-                        onClick={() => setExistingFiles(prev => prev.filter((_, index) => index !== i))}
-                        title="Xóa file này khỏi bản ghi"
-                      />
-                    ]}
-                  >
-                    <Tag color="green">#{i + 1}</Tag>
-                    <span style={{ marginLeft: 8 }}>{f.name || 'file'}</span>
-                  </List.Item>
-                )}
-              />
-            )}
-            <Upload
-              multiple
-              showUploadList={false}
-              beforeUpload={async (file) => {
-                const { isValid, errorMessage } = validateFileSize(file);
-                if (!isValid) {
-                  api.error({ message: errorMessage, placement: 'bottomRight' });
-                  return false;
-                }
-                return false; // prevent auto upload; we manage in onChange
-              }}
-              onChange={(info) => {
-                const { fileList } = info;
-                const newFiles = fileList.filter(f => f.originFileObj);
-                const mapped = newFiles.map(f => ({ 
-                  uid: f.uid, 
-                  name: f.name, 
-                  originFileObj: f.originFileObj 
-                }));
-                setUploadedFiles(prev => {
-                  const exists = prev.map(f => f.name);
-                  const uniques = mapped.filter(f => !exists.includes(f.name));
-                  return [...prev, ...uniques];
-                });
-              }}
-            >
-              <Button icon={<UploadOutlined />} size="small">Chọn tài liệu</Button>
-            </Upload>
-
-            {uploadedFiles?.length > 0 && (
-              <List 
-                style={{ marginTop: 12 }}
-                size="small"
-                dataSource={uploadedFiles}
-                renderItem={(file, index) => (
-                  <List.Item
-                    actions={[
-                      <Button 
-                        type="text" 
-                        danger 
-                        size="small" 
-                        icon={<DeleteOutlined />} 
-                        onClick={() => setUploadedFiles(prev => prev.filter((_, i) => i !== index))} 
-                      />
-                    ]}
-                  >
-                    <Tag color="blue">#{index + 1}</Tag>
-                    <span style={{ marginLeft: 8 }}>{file.name}</span>
-                    <span style={{ marginLeft: 8, color: '#666', fontSize: '12px' }}>
-                      (đã chọn)
-                    </span>
-                  </List.Item>
-                )}
-              />
-            )}
-          </Form.Item>
         </Form>
       </Modal>
     </>

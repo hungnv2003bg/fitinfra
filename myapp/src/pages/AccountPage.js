@@ -9,12 +9,12 @@ import {
   Input,
   Select,
   message,
+  notification,
   Card,
   Row,
   Col,
   Statistic,
   Badge,
-  DatePicker,
 } from "antd";
 import {
   UserOutlined,
@@ -29,13 +29,15 @@ import {
 } from "@ant-design/icons";
 import axios from "../plugins/axios";
 import { useLanguage } from "../contexts/LanguageContext";
+import { useSearchParams } from "react-router-dom";
 
 const { Option } = Select;
-const { RangePicker } = DatePicker;
+ 
 
 function AccountPage() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
   const [allGroups, setAllGroups] = useState([]);
   const [allRoles, setAllRoles] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -44,8 +46,10 @@ function AccountPage() {
   const [searchText, setSearchText] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterRole, setFilterRole] = useState("all");
-  const [dateRange, setDateRange] = useState([null, null]);
+  const [serverGroupId, setServerGroupId] = useState(null);
+ 
   const { lang } = useLanguage();
+  const [searchParams, setSearchParams] = useSearchParams();
 
 
   const labels = {
@@ -66,6 +70,7 @@ function AccountPage() {
       phone: "Số điện thoại",
       createdAt: "Ngày tạo",
       role: "Vai trò",
+      group: "Nhóm",
       status: "Trạng thái",
       actions: "Thao tác",
       view: "Xem",
@@ -123,7 +128,8 @@ function AccountPage() {
       filterByDate: "Lọc theo ngày tạo",
       startDate: "Từ ngày",
       endDate: "Đến ngày",
-      clearFilters: "Xóa bộ lọc"
+      clearFilters: "Xóa bộ lọc",
+      allGroups: "Tất cả nhóm"
     },
     zh: {
       pageTitle: "账户",
@@ -142,6 +148,7 @@ function AccountPage() {
       phone: "电话号码",
       createdAt: "创建日期",
       role: "角色",
+      group: "组",
       status: "状态",
       actions: "操作",
       view: "查看",
@@ -199,7 +206,8 @@ function AccountPage() {
       filterByDate: "按创建日期筛选",
       startDate: "开始日期",
       endDate: "结束日期",
-      clearFilters: "清除筛选"
+      clearFilters: "清除筛选",
+      allGroups: "所有组"
     }
   };
   const t = labels[lang];
@@ -230,10 +238,30 @@ function AccountPage() {
     fetchRoles();
   }, []);
 
+  // Refetch users when server-side group filter changes
+  useEffect(() => {
+    if (serverGroupId !== undefined) {
+      fetchUsers();
+    }
+  }, [serverGroupId]);
+
+
+  // Remove query param when navigating away
+  const handleViewModalClose = () => {
+    setIsViewModalVisible(false);
+    setViewUser(null);
+    // Remove userId from URL when closing modal
+    if (searchParams.get('userId')) {
+      setSearchParams({});
+    }
+  };
+
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const response = await axios.get("/api/users");
+      const params = {};
+      if (serverGroupId != null) params.groupId = Number(serverGroupId);
+      const response = await axios.get("/api/users", { params });
       const usersData = response.data || [];
       setUsers(usersData);
       
@@ -244,10 +272,7 @@ function AccountPage() {
       
       setStats({ total, active, inactive });
     } catch (error) {
-      message.error({
-        content: t.cannotLoadUsers,
-        placement: 'bottomRight'
-      });
+      notification.error({ message: lang === 'vi' ? 'Hệ thống' : '系统', description: t.cannotLoadUsers, placement: 'bottomRight' });
     } finally {
       setLoading(false);
     }
@@ -308,8 +333,9 @@ function AccountPage() {
         ...userToToggle,
         status: newStatus,
       });
-      message.success({
-        content: newStatus === "ACTIVE" ? t.activateSuccess : t.deactivateSuccess,
+      notification.success({
+        message: lang === 'vi' ? 'Hệ thống' : '系统',
+        description: newStatus === "ACTIVE" ? t.activateSuccess : t.deactivateSuccess,
         placement: 'bottomRight'
       });
       fetchUsers();
@@ -321,31 +347,14 @@ function AccountPage() {
         const errorData = error.response.data;
 
         if (errorData.error === "DUPLICATE_MANV") {
-          message.error({
-            content: `Mã nhân viên "${errorData.duplicateValue}" đã tồn tại. Vui lòng chọn mã khác.`,
-            placement: 'bottomRight'
-          });
+          notification.error({ message: lang === 'vi' ? 'Hệ thống' : '系统', description: `Mã nhân viên "${errorData.duplicateValue}" đã tồn tại. Vui lòng chọn mã khác.`, placement: 'bottomRight' });
         } else if (errorData.error === "DUPLICATE_EMAIL") {
-          message.error({
-            content: `Email "${errorData.duplicateValue}" đã tồn tại. Vui lòng chọn email khác.`,
-            placement: 'bottomRight'
-          });
-        } else if (errorData.error === "DUPLICATE_PHONE") {
-          message.error({
-            content: `Số điện thoại "${errorData.duplicateValue}" đã tồn tại. Vui lòng chọn số khác.`,
-            placement: 'bottomRight'
-          });
+          notification.error({ message: lang === 'vi' ? 'Hệ thống' : '系统', description: `Email "${errorData.duplicateValue}" đã tồn tại. Vui lòng chọn email khác.`, placement: 'bottomRight' });
         } else {
-          message.error({
-            content: errorData.error || t.updateStatusError,
-            placement: 'bottomRight'
-          });
+          notification.error({ message: lang === 'vi' ? 'Hệ thống' : '系统', description: errorData.error || t.updateStatusError, placement: 'bottomRight' });
         }
       } else {
-        message.error({
-          content: t.updateStatusError,
-          placement: 'bottomRight'
-        });
+        notification.error({ message: lang === 'vi' ? 'Hệ thống' : '系统', description: t.updateStatusError, placement: 'bottomRight' });
       }
     }
   };
@@ -379,8 +388,9 @@ function AccountPage() {
           await axios.post(`/api/users/${editingUser.userID}/roles`, []);
         }
 
-        message.success({
-          content: "Cập nhật người dùng thành công",
+        notification.success({
+          message: lang === 'vi' ? 'Hệ thống' : '系统',
+          description: "Cập nhật người dùng thành công",
           placement: 'bottomRight'
         });
       } else {
@@ -398,8 +408,9 @@ function AccountPage() {
         if (roleId) {
           await axios.post(`/api/users/${newUser.userID}/roles`, [{ id: roleId }]);
         }
-        message.success({
-          content: "Tạo người dùng thành công",
+        notification.success({
+          message: lang === 'vi' ? 'Hệ thống' : '系统',
+          description: "Tạo người dùng thành công",
           placement: 'bottomRight'
         });
       }
@@ -412,31 +423,14 @@ function AccountPage() {
         const errorData = error.response.data;
 
         if (errorData.error === "DUPLICATE_MANV") {
-          message.error({
-            content: `Mã nhân viên "${errorData.duplicateValue}" đã tồn tại. Vui lòng chọn mã khác.`,
-            placement: 'bottomRight'
-          });
+          notification.error({ message: lang === 'vi' ? 'Hệ thống' : '系统', description: `Mã nhân viên "${errorData.duplicateValue}" đã tồn tại. Vui lòng chọn mã khác.`, placement: 'bottomRight' });
         } else if (errorData.error === "DUPLICATE_EMAIL") {
-          message.error({
-            content: `Email "${errorData.duplicateValue}" đã tồn tại. Vui lòng chọn email khác.`,
-            placement: 'bottomRight'
-          });
-        } else if (errorData.error === "DUPLICATE_PHONE") {
-          message.error({
-            content: `Số điện thoại "${errorData.duplicateValue}" đã tồn tại. Vui lòng chọn số khác.`,
-            placement: 'bottomRight'
-          });
+          notification.error({ message: lang === 'vi' ? 'Hệ thống' : '系统', description: `Email "${errorData.duplicateValue}" đã tồn tại. Vui lòng chọn email khác.`, placement: 'bottomRight' });
         } else {
-          message.error({
-            content: errorData.error || "Không thể lưu thông tin người dùng",
-            placement: 'bottomRight'
-          });
+          notification.error({ message: lang === 'vi' ? 'Hệ thống' : '系统', description: errorData.error || "Không thể lưu thông tin người dùng", placement: 'bottomRight' });
         }
       } else {
-        message.error({
-          content: "Không thể lưu thông tin người dùng",
-          placement: 'bottomRight'
-        });
+        notification.error({ message: lang === 'vi' ? 'Hệ thống' : '系统', description: "Không thể lưu thông tin người dùng", placement: 'bottomRight' });
       }
     }
   };
@@ -461,23 +455,18 @@ function AccountPage() {
         newPassword: values.newPassword
       });
       
-      message.success({
-        content: "Đổi mật khẩu thành công",
+      notification.success({
+        message: lang === 'vi' ? 'Hệ thống' : '系统',
+        description: "Đổi mật khẩu thành công",
         placement: 'bottomRight'
       });
       setIsPasswordModalVisible(false);
       passwordForm.resetFields();
     } catch (error) {
       if (error.response && error.response.data) {
-        message.error({
-          content: error.response.data || "Không thể đổi mật khẩu",
-          placement: 'bottomRight'
-        });
+        notification.error({ message: lang === 'vi' ? 'Hệ thống' : '系统', description: error.response.data || "Không thể đổi mật khẩu", placement: 'bottomRight' });
       } else {
-        message.error({
-          content: "Không thể đổi mật khẩu",
-          placement: 'bottomRight'
-        });
+        notification.error({ message: lang === 'vi' ? 'Hệ thống' : '系统', description: "Không thể đổi mật khẩu", placement: 'bottomRight' });
       }
     }
   };
@@ -493,38 +482,24 @@ function AccountPage() {
     setIsViewModalVisible(true);
   };
 
-  const handleViewModalClose = () => {
-    setIsViewModalVisible(false);
-    setViewUser(null);
-  };
 
-
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = 
-      user.fullName?.toLowerCase().includes(searchText.toLowerCase()) ||
-      user.email?.toLowerCase().includes(searchText.toLowerCase()) ||
-      user.manv?.toLowerCase().includes(searchText.toLowerCase());
-    
-    const matchesStatus = filterStatus === "all" || user.status === filterStatus;
-    
-
-    const matchesRole = filterRole === "all" || 
-      (user.roles && user.roles.some(role => role.name === filterRole));
-    
-
-    let matchesDate = true;
-    if (dateRange[0] && dateRange[1]) {
-      const userDate = new Date(user.createdAt);
-      const startDate = new Date(dateRange[0]);
-      const endDate = new Date(dateRange[1]);
-
-      startDate.setHours(0, 0, 0, 0);
-      endDate.setHours(23, 59, 59, 999);
-      matchesDate = userDate >= startDate && userDate <= endDate;
-    }
-    
-    return matchesSearch && matchesStatus && matchesRole && matchesDate;
-  });
+  // Check if showing specific user from URL
+  const userId = searchParams.get('userId');
+  const filteredUsers = userId ? 
+    users.filter(user => user.userID === parseInt(userId)) :
+    users.filter(user => {
+      const matchesSearch = 
+        user.fullName?.toLowerCase().includes(searchText.toLowerCase()) ||
+        user.email?.toLowerCase().includes(searchText.toLowerCase()) ||
+        user.manv?.toLowerCase().includes(searchText.toLowerCase());
+      
+      const matchesStatus = filterStatus === "all" || user.status === filterStatus;
+      
+      const matchesRole = filterRole === "all" || 
+        (user.roles && user.roles.some(role => role.name === filterRole));
+      
+      return matchesSearch && matchesStatus && matchesRole;
+    });
 
   const columns = [
     {
@@ -532,60 +507,61 @@ function AccountPage() {
       key: 'index',
       width: 60,
       align: 'center',
-      render: (_, __, index) => index + 1,
+      render: (_, __, index) => ((pagination.current - 1) * pagination.pageSize) + index + 1,
     },
-
     {
       title: t.empId,
       dataIndex: "manv",
       key: "manv",
-      width: 120,
+      width: 140,
       render: (text) => <Tag color="blue">{text}</Tag>,
     },
     {
       title: t.fullName,
       dataIndex: "fullName",
       key: "fullName",
-      width: 160,
+      width: 300,
       render: (text) => (
         <span style={{ fontWeight: 500 }}>{text}</span>
       ),
     },
     {
-
-
-    },
-    {
-
-
-    },
-    {
       title: t.createdAt,
       dataIndex: "createdAt",
       key: "createdAt",
-      width: 120,
+      width: 140,
       render: (date) => new Date(date).toLocaleDateString(lang === 'vi' ? "vi-VN" : "zh-CN"),
     },
     {
       title: <div style={{ textAlign: 'center' }}>{t.role}</div>,
       dataIndex: "roles",
       key: "roles",
-      width: 100,
+      width: 160,
+      align: 'center',
       render: (roles) => (
-        <Space>
-          {roles?.map((role, index) => (
-            <Tag key={index} color="green">
-              {role.name}
-            </Tag>
-          ))}
-        </Space>
+        <span style={{ whiteSpace: 'nowrap' }}>
+          {(roles || []).map(r => r.name).join(', ')}
+        </span>
       ),
     },
     {
-      title: t.status,
+      title: <div style={{ textAlign: 'center' }}>{t.group}</div>,
+      dataIndex: "groups",
+      key: "groups",
+      width: 200,
+      align: 'center',
+      render: (groups) => (
+        <div style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.4 }}>
+          {(groups || []).map(g => g.name).join(', ')}
+        </div>
+      ),
+    },
+    {
+      title: <div style={{ textAlign: 'center' }}>{t.status}</div>,
       dataIndex: "status",
       key: "status",
-      width: 180,
+      width: 160,
+      align: 'center',
       render: (status) => (
         <Badge
           status={status === "ACTIVE" ? "success" : "error"}
@@ -823,15 +799,6 @@ function AccountPage() {
           </Select>
           
           {}
-          <RangePicker
-            placeholder={[t.startDate, t.endDate]}
-            value={dateRange}
-            onChange={setDateRange}
-            style={{ width: 220, height: 40 }}
-            format="DD/MM/YYYY"
-          />
-          
-          {}
           <Select
             value={filterStatus === "all" ? t.allStatus : filterStatus === "ACTIVE" ? t.active : t.inactive}
             onChange={(value) => setFilterStatus(value === t.allStatus ? "all" : value)}
@@ -844,6 +811,19 @@ function AccountPage() {
             <Option value="ACTIVE">{t.active}</Option>
             <Option value="INACTIVE">{t.inactive}</Option>
           </Select>
+
+          {}
+          <Select
+            placeholder={lang === 'vi' ? 'Lọc theo nhóm' : '按组筛选'}
+            value={serverGroupId ?? 'all'}
+            onChange={(value) => setServerGroupId(value === 'all' ? null : value)}
+            style={{ width: 180, height: 40 }}
+          >
+            <Option value="all">{t.allGroups}</Option>
+            {allGroups.map(g => (
+              <Option key={g.id} value={g.id}>{g.name}</Option>
+            ))}
+          </Select>
           
           {}
           <Button 
@@ -851,7 +831,7 @@ function AccountPage() {
               setSearchText("");
               setFilterStatus("all");
               setFilterRole("all");
-              setDateRange([null, null]);
+              setServerGroupId(null);
             }}
             style={{ height: 40 }}
           >
@@ -883,12 +863,14 @@ function AccountPage() {
         rowKey="userID"
         loading={loading}
         pagination={{
-          pageSize: 10,
+          current: pagination.current,
+          pageSize: pagination.pageSize,
           showSizeChanger: true,
           showQuickJumper: true,
           showTotal: (total, range) =>
             t.paginationText(range, total),
         }}
+        onChange={(p) => setPagination({ current: p.current, pageSize: p.pageSize })}
       />
 
       {}
@@ -979,15 +961,21 @@ function AccountPage() {
             </Select>
           </Form.Item>
 
-          <Form.Item name="groups" label="Group">
-            <Select mode="multiple" placeholder="Chọn nhóm" allowClear>
+          <Form.Item name="groups" label={t.group}>
+            <Select mode="multiple" placeholder={lang === 'vi' ? 'Chọn nhóm' : '选择组'} allowClear>
               {allGroups.map(g => (
                 <Option key={g.id} value={g.id}>{g.name}</Option>
               ))}
             </Select>
           </Form.Item>
 
-          <Form.Item name="roleId" label={t.role}>
+          <Form.Item 
+            name="roleId" 
+            label={t.role}
+            rules={[
+              { required: true, message: lang === 'vi' ? 'Vui lòng chọn vai trò' : '请选择角色' }
+            ]}
+          >
             <Select placeholder={t.filterByRole} allowClear>
               {allRoles.map(r => (
                 <Option key={r.id} value={r.id}>{r.name}</Option>
@@ -1015,7 +1003,7 @@ function AccountPage() {
             <p><strong>{t.phone}:</strong> {viewUser.phone}</p>
             <p><strong>{t.createdAt}:</strong> {new Date(viewUser.createdAt).toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'zh-CN')}</p>
             <p><strong>{t.role}:</strong> {viewUser.roles?.map(r => r.name).join(', ')}</p>
-            <p><strong>Group:</strong> {viewUser.groups?.map(g => g.name).join(', ') || 'N/A'}</p>
+            <p><strong>{t.group}:</strong> {viewUser.groups?.map(g => g.name).join(', ') || 'N/A'}</p>
             <p><strong>{t.status}:</strong> {viewUser.status === 'ACTIVE' ? t.active : t.inactive}</p>
           </div>
         )}
@@ -1083,7 +1071,10 @@ function AccountPage() {
             <p style={{ margin: 0, fontWeight: 500 }}>{t.fullName}: {userToToggle.fullName}</p>
             <p style={{ margin: '4px 0 0 0' }}>{t.empId}: {userToToggle.manv}</p>
             <p style={{ margin: '4px 0 0 0' }}>{t.email}: {userToToggle.email}</p>
+            <p style={{ margin: '4px 0 0 0' }}>{t.phone}: {userToToggle.phone || 'N/A'}</p>
+            <p style={{ margin: '4px 0 0 0' }}>{t.createdAt}: {userToToggle.createdAt ? new Date(userToToggle.createdAt).toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'zh-CN') : 'N/A'}</p>
             <p style={{ margin: '4px 0 0 0' }}>{t.role}: {userToToggle.roles?.map(role => role.name).join(', ') || 'N/A'}</p>
+            <p style={{ margin: '4px 0 0 0' }}>{t.group}: {userToToggle.groups?.map(group => group.name).join(', ') || 'N/A'}</p>
           </div>
         )}
       </Modal>

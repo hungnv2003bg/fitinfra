@@ -6,6 +6,7 @@ import com.foxconn.sopchecklist.exception.NotFoundException;
 import com.foxconn.sopchecklist.service.SOPDocumentsService;
 import com.foxconn.sopchecklist.service.UsersService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.annotation.Validated;
@@ -24,6 +25,9 @@ public class SOPDocumentsController {
 
     @Autowired
     private SOPDocumentsService sopDocumentsService;
+
+    @Value("${app.public.url:http://10.228.64.77:3000}")
+    private String appPublicUrl;
 
     @GetMapping("/sop-all")
     public String getAllSOP(Model model) {
@@ -106,10 +110,16 @@ public class SOPDocumentsController {
         private com.foxconn.sopchecklist.service.TimeService timeService;
 
         @Autowired
-        private com.foxconn.sopchecklist.service.MailService mailService;
+        private com.foxconn.sopchecklist.service.CronMailAllSendService cronMailAllSendService;
+
+        @Autowired
+        private com.foxconn.sopchecklist.repository.GroupRepository groupRepository;
 
         @org.springframework.beans.factory.annotation.Value("${sop.edit-delete.limit-days:3}")
         private int editDeleteLimitDays;
+
+        @org.springframework.beans.factory.annotation.Value("${app.public.url:http://10.228.64.77:3000}")
+        private String appPublicUrl;
         
         @PostMapping
         public ResponseEntity<Map<String, Object>> create(@RequestBody SOPDocuments document) {
@@ -137,7 +147,13 @@ public class SOPDocumentsController {
                 return ResponseEntity.created(URI.create("/api/sop-documents/" + created.getDocumentID())).body(result);
             } catch (Exception e) {
                 Map<String, Object> error = new HashMap<>();
-                error.put("error", e.getMessage());
+                String errorMsg = e.getMessage();
+                if ("DUPLICATE_NAME".equals(errorMsg)) {
+                    error.put("error", "DUPLICATE_NAME");
+                    error.put("duplicateName", document.getTitle());
+                } else {
+                    error.put("error", errorMsg);
+                }
                 return ResponseEntity.badRequest().body(error);
             }
         }
@@ -355,10 +371,8 @@ public class SOPDocumentsController {
                         Long sopId = updatedDocument.getSop() != null ? updatedDocument.getSop().getId() : null;
                         Integer docId = updatedDocument.getDocumentID();
                         if (sopId != null && docId != null) {
-                            String appBase = System.getenv("APP_PUBLIC_URL");
-                            if (appBase == null || appBase.trim().isEmpty()) {
-                                appBase = "http://" + java.net.InetAddress.getLocalHost().getHostAddress() + ":3000";
-                            }
+                            // Use configured URL from application.properties
+                            String appBase = appPublicUrl;
                             String link = appBase + "/sops/" + sopId + "?doc=" + docId;
                             body.append("<p style=\"margin-top:12px;\"><a href=\"").append(link)
                                 .append("\" style=\"display:inline-block;background:#1677ff;color:#fff;padding:8px 12px;border-radius:4px;text-decoration:none;\">Mở tài liệu vừa cập nhật</a></p>");
@@ -369,14 +383,159 @@ public class SOPDocumentsController {
                     
                     body.append("</div>");
 
-                    mailService.createMail(subject, body.toString());
+                    cronMailAllSendService.sendSOPSMail(subject, body.toString(), null);
                 } catch (Exception ignore) {}
 
                 return ResponseEntity.ok(result);
             } catch (Exception e) {
                 Map<String, Object> error = new HashMap<>();
-                error.put("error", e.getMessage());
+                String errorMsg = e.getMessage();
+                if ("DUPLICATE_NAME".equals(errorMsg)) {
+                    error.put("error", "DUPLICATE_NAME");
+                    String duplicateName = updates.containsKey("title") ? (String) updates.get("title") : "";
+                    if (duplicateName.isEmpty()) {
+                        // Fallback: try to get from existing document
+                        try {
+                            SOPDocuments doc = sopDocumentsService.findById(id);
+                            if (doc != null) duplicateName = doc.getTitle();
+                        } catch (Exception ignored) {}
+                    }
+                    error.put("duplicateName", duplicateName);
+                } else {
+                    error.put("error", errorMsg);
+                }
                 return ResponseEntity.badRequest().body(error);
+            }
+        }
+
+        @PostMapping("/{id}/notify")
+        public ResponseEntity<Map<String, Object>> notifyDocument(@PathVariable Integer id, @RequestBody Map<String, Object> payload) {
+            Map<String, Object> result = new HashMap<>();
+            try {
+                SOPDocuments doc = sopDocumentsService.findById(id);
+                if (doc == null) return ResponseEntity.notFound().build();
+
+                java.util.Set<String> emails = new java.util.HashSet<>();
+                java.util.Set<String> ccEmails = new java.util.HashSet<>();
+                Object userIds = payload.get("userIds");
+                if (userIds instanceof java.util.List<?>) {
+                    for (Object o : (java.util.List<?>) userIds) {
+                        try {
+                            Integer uid = Integer.valueOf(String.valueOf(o));
+                            Users u = usersService.findById(uid);
+                            if (u != null && u.getEmail() != null) emails.add(u.getEmail());
+                        } catch (Exception ignored) {}
+                    }
+                }
+                Object groupIds = payload.get("groupIds");
+                if (groupIds instanceof java.util.List<?>) {
+                    for (Object o : (java.util.List<?>) groupIds) {
+                        try {
+                            Long gid = Long.valueOf(String.valueOf(o));
+                            com.foxconn.sopchecklist.entity.Group g = groupRepository.findById(gid).orElse(null);
+                            if (g != null && g.getUsers() != null) {
+                                for (Users u : g.getUsers()) {
+                                    if (u.getEmail() != null) emails.add(u.getEmail());
+                                }
+                            }
+                        } catch (Exception ignored) {}
+                    }
+                }
+
+                // CC from users
+                Object ccUserIds = payload.get("ccUserIds");
+                if (ccUserIds instanceof java.util.List<?>) {
+                    for (Object o : (java.util.List<?>) ccUserIds) {
+                        try {
+                            Integer uid = Integer.valueOf(String.valueOf(o));
+                            Users u = usersService.findById(uid);
+                            if (u != null && u.getEmail() != null) ccEmails.add(u.getEmail());
+                        } catch (Exception ignored) {}
+                    }
+                }
+                // CC from groups
+                Object ccGroupIds = payload.get("ccGroupIds");
+                if (ccGroupIds instanceof java.util.List<?>) {
+                    for (Object o : (java.util.List<?>) ccGroupIds) {
+                        try {
+                            Long gid = Long.valueOf(String.valueOf(o));
+                            com.foxconn.sopchecklist.entity.Group g = groupRepository.findById(gid).orElse(null);
+                            if (g != null && g.getUsers() != null) {
+                                for (Users u : g.getUsers()) {
+                                    if (u.getEmail() != null) ccEmails.add(u.getEmail());
+                                }
+                            }
+                        } catch (Exception ignored) {}
+                    }
+                }
+
+                String toCsv = String.join(",", emails);
+                String ccCsv = String.join(",", ccEmails);
+
+                String title = doc.getTitle() != null ? doc.getTitle() : ("Document " + id);
+                String subject = "Thông báo đã tạo " + title;
+                Long sopId = doc.getSop() != null ? doc.getSop().getId() : null;
+
+                // Build rich HTML body like creation mail
+                StringBuilder body = new StringBuilder();
+                body.append("<div style=\"font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#333;\">");
+                body.append("<h3 style=\"margin:0 0 12px;\">").append(escapeHtml(subject)).append("</h3>");
+                body.append("<table style=\"width:100%;border-collapse:collapse;\" border=\"1\" cellspacing=\"0\" cellpadding=\"6\">");
+
+                body.append("<tr><td style=\"width:160px;background:#fafafa;font-weight:bold;\">Tên tài liệu</td><td>")
+                    .append(escapeHtml(nullToEmpty(doc.getTitle()))).append("</td></tr>");
+
+                String desc = doc.getDescription();
+                String descDisplay = (desc != null && !desc.trim().isEmpty()) ? desc : "-";
+                body.append("<tr><td style=\"background:#fafafa;font-weight:bold;\">Mô tả</td><td>")
+                    .append(escapeHtml(descDisplay)).append("</td></tr>");
+
+                java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+                String createdAtStr = doc.getCreatedAt() != null ? doc.getCreatedAt().format(fmt) : "";
+                body.append("<tr><td style=\"background:#fafafa;font-weight:bold;\">Ngày tạo</td><td>")
+                    .append(escapeHtml(createdAtStr)).append("</td></tr>");
+
+                String creator = "";
+                try { creator = doc.getCreatedBy() != null ? (doc.getCreatedBy().getFullName() != null ? doc.getCreatedBy().getFullName() : String.valueOf(doc.getCreatedBy().getUserID())) : ""; } catch (Exception ignore) {}
+                if (creator != null && !creator.trim().isEmpty()) {
+                    body.append("<tr><td style=\"background:#fafafa;font-weight:bold;\">Người tạo</td><td>")
+                        .append(escapeHtml(creator)).append("</td></tr>");
+                }
+
+                if (doc.getFiles() != null && !doc.getFiles().isEmpty()) {
+                    body.append("<tr><td style=\"background:#fafafa;font-weight:bold;\">Tệp đính kèm</td><td>");
+                    body.append("<ul style=\"margin:0 0 0 18px;\">");
+                    for (com.foxconn.sopchecklist.entity.SOPDocumentFiles f : doc.getFiles()) {
+                        try {
+                            body.append("<li>").append(escapeHtml(nullToEmpty(f.getFileName()))).append("</li>");
+                        } catch (Exception ignore) {}
+                    }
+                    body.append("</ul>");
+                    body.append("</td></tr>");
+                }
+
+                body.append("</table>");
+
+                try {
+                    Integer docIdVal = doc.getDocumentID();
+                    String link = appPublicUrl + "/sops/" + (sopId != null ? sopId : "") + "?doc=" + docIdVal;
+                    body.append("<p style=\"margin-top:12px;\"><a href=\"").append(link)
+                        .append("\" style=\"display:inline-block;background:#1677ff;color:#fff;padding:8px 12px;border-radius:4px;text-decoration:none;\">Mở tài liệu</a></p>");
+                } catch (Exception ignore) {}
+
+                body.append("<p><strong>Trân trọng,</strong></p>");
+                body.append("</div>");
+
+                // Use custom to include CC
+                cronMailAllSendService.sendMailCustom("SOP", toCsv, ccCsv, null, subject, body.toString(), Long.valueOf(doc.getDocumentID()));
+                result.put("success", true);
+                result.put("sentTo", toCsv);
+                result.put("cc", ccCsv);
+                return ResponseEntity.ok(result);
+            } catch (Exception e) {
+                result.put("success", false);
+                result.put("message", e.getMessage());
+                return ResponseEntity.internalServerError().body(result);
             }
         }
 
@@ -487,10 +646,8 @@ public class SOPDocumentsController {
                     try {
                         Long sopId = existing.getSop() != null ? existing.getSop().getId() : null;
                         if (sopId != null) {
-                            String appBase = System.getenv("APP_PUBLIC_URL");
-                            if (appBase == null || appBase.trim().isEmpty()) {
-                                appBase = "http://" + java.net.InetAddress.getLocalHost().getHostAddress() + ":3000";
-                            }
+                            // Use configured URL from application.properties
+                            String appBase = appPublicUrl;
                             String link = appBase + "/sops/" + sopId;
                             body.append("<p style=\"margin-top:12px;\"><a href=\"").append(link)
                                 .append("\" style=\"display:inline-block;background:#1677ff;color:#fff;padding:8px 12px;border-radius:4px;text-decoration:none;\">Mở danh sách tài liệu</a></p>");
@@ -501,7 +658,7 @@ public class SOPDocumentsController {
                     
                     body.append("</div>");
 
-                    mailService.createMail(subject, body.toString());
+                    cronMailAllSendService.sendSOPSMail(subject, body.toString(), null);
                 } catch (Exception ignored) { }
                 
 

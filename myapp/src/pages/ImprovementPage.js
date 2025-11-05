@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Table, Tag, Spin, Select, message, Button, Popconfirm, Input, Space, DatePicker } from "antd";
-import { EyeOutlined, EditOutlined, DeleteOutlined, SearchOutlined, LineChartOutlined } from "@ant-design/icons";
+import { Table, Tag, Spin, Select, message, Button, Popconfirm, Input, Space, DatePicker, notification } from "antd";
+import { EyeOutlined, EditOutlined, DeleteOutlined, SearchOutlined, LineChartOutlined, PercentageOutlined } from "@ant-design/icons";
 import ImprovementDetailModal from "../components/modals/ImprovementDetailModal";
 import ImprovementEditModal from "../components/modals/ImprovementEditModal";
 import ImprovementCreateModal from "../components/modals/ImprovementCreateModal";
+import ImprovementProgressModal from "../components/modals/ImprovementProgressModal";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useSelector } from "react-redux";
 import axios from "../plugins/axios";
@@ -17,6 +18,7 @@ export default function ImprovementPage() {
   const [loading, setLoading] = useState(false);
   const [viewRecord, setViewRecord] = useState(null);
   const [editRecord, setEditRecord] = useState(null);
+  const [progressRecord, setProgressRecord] = useState(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [reviewerFilter, setReviewerFilter] = useState(undefined);
@@ -24,6 +26,7 @@ export default function ImprovementPage() {
   const [dateRange, setDateRange] = useState([]);
   const [groups, setGroups] = useState([]);
   const [users, setUsers] = useState([]);
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -53,15 +56,26 @@ export default function ImprovementPage() {
     }
   }, []);
 
-  // Đọc query để hỗ trợ điều hướng từ chi tiết checklist
+  // Đọc query để hỗ trợ điều hướng từ chi tiết checklist hoặc email
   const urlParams = useMemo(() => new URLSearchParams(window.location.search), []);
   const detailIdParam = urlParams.get('detailId');
   const qParam = urlParams.get('q');
+  const improvementIdParam = urlParams.get('improvementId');
 
   useEffect(() => {
     fetchData();
     fetchGroupsAndUsers();
   }, [fetchData, fetchGroupsAndUsers]);
+
+  // Auto mở modal chi tiết khi có improvementId parameter từ email
+  useEffect(() => {
+    if (improvementIdParam && rows.length > 0) {
+      const improvement = rows.find(r => String(r.improvementID || r.id) === String(improvementIdParam));
+      if (improvement) {
+        setViewRecord(improvement);
+      }
+    }
+  }, [improvementIdParam, rows]);
 
 
   useEffect(() => {
@@ -215,19 +229,19 @@ export default function ImprovementPage() {
       ],
     },
     zh: {
-      header: "改进",
+      header: "問題管理",
       stTaskName: "任务名称",
       reviewer: "负责人",
       collaborators: "协同人",
       improvementEvent: "事件类型",
       reviewDate: "预计完成时间",
-      improvement: "改进内容",
+      improvement: "問題管理内容",
       status: "状态",
       completed: "完成时间",
       progress: "进度",
       progressDetail: "附件",
       actions: "操作",
-      searchPlaceholder: "按类别或改进内容搜索",
+      searchPlaceholder: "按类别或問題管理内容搜索",
       filterReviewer: "按执行人筛选",
       filterStatus: "按状态筛选",
       filterDateLabel: "按预定时间筛选:",
@@ -255,27 +269,43 @@ export default function ImprovementPage() {
     {
       title: 'STT',
       key: 'stt',
-      render: (_, __, index) => <Tag color="blue">{index + 1}</Tag>,
+      render: (_, __, index) => <Tag color="blue">{((pagination.current - 1) * pagination.pageSize) + index + 1}</Tag>,
       width: 80,
       align: 'center',
+      onHeaderCell: () => ({ style: { textAlign: 'center' } }),
     },
-    { title: t.stTaskName, dataIndex: "category", key: "category" },
+    { title: t.stTaskName, dataIndex: "category", key: "category", align: 'left', onHeaderCell: () => ({ style: { textAlign: 'left' } }) },
     {
       title: t.improvement,
       dataIndex: "issueDescription",
       key: "issueDescription",
       ellipsis: true,
+      align: 'left',
+      onHeaderCell: () => ({ style: { textAlign: 'left' } }),
     },
     { 
       title: t.reviewer, 
       dataIndex: "responsible", 
       key: "responsible",
-      render: (responsible) => getResponsibleDisplay(responsible)
+      align: 'left',
+      onHeaderCell: () => ({ style: { textAlign: 'left' } }),
+      render: (responsible) => {
+        if (!responsible) return '-';
+        if (Array.isArray(responsible)) {
+          return responsible.length > 0 
+            ? responsible.map(resp => getResponsibleDisplay(resp)).join(', ')
+            : '-';
+        }
+        return getResponsibleDisplay(responsible);
+      },
+      ellipsis: true,
     },
     {
       title: t.collaborators,
       dataIndex: "collaborators",
       key: "collaborators",
+      align: 'center',
+      onHeaderCell: () => ({ style: { textAlign: 'center' } }),
       render: (collaborators) => {
         if (!Array.isArray(collaborators) || collaborators.length === 0) return '-';
         return collaborators.map(collab => getResponsibleDisplay(collab)).join(', ');
@@ -286,6 +316,8 @@ export default function ImprovementPage() {
       title: t.improvementEvent,
       dataIndex: "improvementEventName",
       key: "improvementEventName",
+      align: 'center',
+      onHeaderCell: () => ({ style: { textAlign: 'center' } }),
       render: (value, record) => (record.improvementEvent?.eventName || value || '-'),
       ellipsis: true,
     },
@@ -293,27 +325,42 @@ export default function ImprovementPage() {
       title: t.reviewDate,
       dataIndex: "plannedDueAt",
       key: "plannedDueAt",
-      render: (v) => formatDateOnlyVN(v),
+      align: 'left',
+      onHeaderCell: () => ({ style: { textAlign: 'left' } }),
+      render: (v) => formatDateShortVN(v),
     },
     {
       title: t.completed,
       dataIndex: 'completedAt',
       key: 'completedAt',
+      align: 'left',
+      onHeaderCell: () => ({ style: { textAlign: 'left' } }),
       render: (v) => formatDateShortVN(v),
     },
     {
       title: t.status,
       dataIndex: "status",
       key: "status",
+      align: 'center',
+      onHeaderCell: () => ({ style: { textAlign: 'center' } }),
       render: (value) => renderStatusTag(value),
     },
-    { title: t.progress, dataIndex: 'progress', key: 'progress', width: 110, render: (v) => (v != null ? `${v}%` : '-') },
+    {
+      title: t.progress,
+      dataIndex: 'progress',
+      key: 'progress',
+      width: 110,
+      align: 'center',
+      onHeaderCell: () => ({ style: { textAlign: 'center' } }),
+      render: (v) => (v != null ? `${v}%` : '-')
+    },
     { 
       title: t.progressDetail, 
       dataIndex: 'files', 
       key: 'files', 
       width: 120,
       align: 'center',
+      onHeaderCell: () => ({ style: { textAlign: 'center' } }),
       render: (files) => {
         if (!Array.isArray(files) || files.length === 0) return '-';
         const count = files.length;
@@ -325,14 +372,23 @@ export default function ImprovementPage() {
       title: <div style={{ textAlign: 'center' }}>{t.actions}</div>,
       key: "action",
       fixed: "right",
-      width: 160,
+      width: 208,
       align: 'center',
+      onHeaderCell: () => ({ style: { textAlign: 'center' } }),
       render: (_, record) => (
         <div style={{ display: 'flex', gap: 8 }}>
           <Button 
             icon={<EyeOutlined style={{ fontSize: '14px' }} />} 
             size="middle" 
             onClick={() => setViewRecord(record)} 
+            style={{ minWidth: '36px', height: '36px' }}
+          />
+          <Button
+            type="default"
+            icon={<PercentageOutlined style={{ fontSize: '14px' }} />}
+            size="middle"
+            onClick={() => setProgressRecord(record)}
+            title={lang === 'vi' ? 'Cập nhật tiến độ' : '更新进度'}
             style={{ minWidth: '36px', height: '36px' }}
           />
           <Button 
@@ -349,14 +405,16 @@ export default function ImprovementPage() {
             onConfirm={async () => {
               try {
                 await axios.delete(`/api/improvements/${encodeURIComponent(String(record.improvementID || record.id))}`);
-                message.success({
-                  content: 'Đã xóa',
+                notification.success({
+                  message: 'Hệ thống',
+                  description: 'Đã xóa',
                   placement: 'bottomRight'
                 });
                 fetchData();
               } catch {
-                message.error({
-                  content: 'Xóa thất bại',
+                notification.error({
+                  message: 'Hệ thống',
+                  description: 'Xóa thất bại',
                   placement: 'bottomRight'
                 });
               }
@@ -451,12 +509,20 @@ export default function ImprovementPage() {
           dataSource={filteredRows} 
           columns={columns}
           scroll={{ x: 'max-content' }}
+          pagination={{ current: pagination.current, pageSize: pagination.pageSize, showSizeChanger: true, showQuickJumper: true }}
+          onChange={(p) => setPagination({ current: p.current, pageSize: p.pageSize })}
         />
       </Spin>
 
       <ImprovementDetailModal open={!!viewRecord} record={viewRecord} onCancel={() => setViewRecord(null)} groups={groups} users={users} />
       <ImprovementEditModal open={!!editRecord} record={editRecord} onCancel={() => setEditRecord(null)} onSaved={fetchData} groups={groups} users={users} />
       <ImprovementCreateModal open={createOpen} onCancel={() => setCreateOpen(false)} onCreated={() => { setCreateOpen(false); fetchData(); }} groups={groups} users={users} />
+      <ImprovementProgressModal 
+        open={!!progressRecord} 
+        record={progressRecord} 
+        onCancel={() => { setProgressRecord(null); fetchData(); }} 
+        onSaved={fetchData} 
+      />
     </div>
   );
 }

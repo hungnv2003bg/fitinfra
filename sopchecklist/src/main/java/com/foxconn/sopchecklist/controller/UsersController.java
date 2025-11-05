@@ -26,7 +26,25 @@ public class UsersController {
     private PasswordEncoder passwordEncoder;
 
     @GetMapping
-    public List<Users> findAll() {
+    public List<Users> findAll(
+            @RequestParam(value = "groupId", required = false) String groupId,
+            @RequestParam(value = "group", required = false) String group
+    ) {
+        // Be tolerant to different param names/types to avoid 400 from type conversion
+        Long gid = null;
+        try {
+            if (groupId != null && !groupId.isBlank()) {
+                gid = Long.valueOf(groupId.trim());
+            } else if (group != null && !group.isBlank()) {
+                gid = Long.valueOf(group.trim());
+            }
+        } catch (NumberFormatException ignored) {
+            gid = null; // If cannot parse, fall back to all users
+        }
+
+        if (gid != null) {
+            return usersService.findByGroupId(gid);
+        }
         return usersService.findAll();
     }
 
@@ -73,11 +91,7 @@ public class UsersController {
             }
             
 
-            if (user.getPhone() != null && !user.getPhone().trim().isEmpty() && 
-                usersService.existsByPhone(user.getPhone())) {
-                return ResponseEntity.badRequest()
-                    .body(Map.of("error", "DUPLICATE_PHONE", "duplicateValue", user.getPhone()));
-            }
+            // No duplicate check on phone number per new requirement
             
 
             if (user.getPasswordHash() != null && !user.getPasswordHash().isEmpty()) {
@@ -115,12 +129,7 @@ public class UsersController {
             }
             
 
-            if (user.getPhone() != null && !user.getPhone().trim().isEmpty() && 
-                !user.getPhone().equals(existingUser.getPhone()) && 
-                usersService.existsByPhoneAndIdNot(user.getPhone(), id)) {
-                return ResponseEntity.badRequest()
-                    .body(Map.of("error", "DUPLICATE_PHONE", "duplicateValue", user.getPhone()));
-            }
+            // No duplicate check on phone number when updating
             
 
             existingUser.setFullName(user.getFullName());

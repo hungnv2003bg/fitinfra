@@ -20,20 +20,37 @@ const axiosIns = axios.create({
 // Track user activity for inactivity detection
 let lastActivityTime = Date.now();
 let inactivityTimer = null;
+let warningTimer = null;
+let warningShown = false;
 
 const resetInactivityTimer = () => {
     lastActivityTime = Date.now();
+    warningShown = false;
+    
+    // Clear existing timers
     if (inactivityTimer) {
         clearTimeout(inactivityTimer);
     }
+    if (warningTimer) {
+        clearTimeout(warningTimer);
+    }
     
-    // Set timer for 30 minutes of inactivity
+    // Set warning timer (5 minutes before logout)
+    warningTimer = setTimeout(() => {
+        if (!warningShown) {
+            warningShown = true;
+            const warningMessage = 'Bạn sẽ bị đăng xuất sau 5 phút nữa do không hoạt động. Nhấp vào bất kỳ đâu để tiếp tục.';
+            alert(warningMessage);
+        }
+    }, (60 - 5) * 60 * 1000); // 55 minutes
+    
+    // Set logout timer for 1 hour of inactivity
     inactivityTimer = setTimeout(() => {
-        console.log('User inactive for 30 minutes, logging out...');
+        console.log('User inactive for 1 hour, logging out...');
         clearAuthData();
         store.dispatch(userSlice.actions.dangXuat());
         window.location.href = '/login';
-    }, 30 * 60 * 1000); // 30 minutes
+    }, 60 * 60 * 1000); // 1 hour
 };
 
 // Track user activity
@@ -41,8 +58,10 @@ const resetInactivityTimer = () => {
     document.addEventListener(event, resetInactivityTimer, true);
 });
 
-// Auto-refresh token function
-const refreshAccessToken = async () => {
+// Auto-refresh token function with retry
+const refreshAccessToken = async (retryCount = 0) => {
+    const maxRetries = 2;
+    
     try {
         const authData = getAuthData();
         if (!authData || !authData.refreshToken) {
@@ -71,7 +90,16 @@ const refreshAccessToken = async () => {
         console.log('Token refreshed successfully');
         return token;
     } catch (error) {
-        console.error('Token refresh failed:', error);
+        console.error(`Token refresh failed (attempt ${retryCount + 1}):`, error);
+        
+        // Retry if we haven't exceeded max retries and it's a network error
+        if (retryCount < maxRetries && (!error.response || error.response.status >= 500)) {
+            console.log(`Retrying token refresh in 2 seconds...`);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return refreshAccessToken(retryCount + 1);
+        }
+        
+        // If all retries failed or it's an auth error, logout
         clearAuthData();
         store.dispatch(userSlice.actions.dangXuat());
         throw error;
@@ -88,8 +116,8 @@ const needsRefresh = (token) => {
         const now = Date.now();
         const timeUntilExpiry = exp - now;
         
-        // Refresh if token expires in less than 5 minutes
-        return timeUntilExpiry < 5 * 60 * 1000;
+        // Refresh if token expires in less than 10 minutes
+        return timeUntilExpiry < 10 * 60 * 1000;
     } catch (error) {
         return true; // If we can't parse the token, assume it needs refresh
     }

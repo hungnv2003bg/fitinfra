@@ -12,6 +12,7 @@ public interface UsersService {
     Users update(Users user);
     void delete(Integer id);
     List<Users> findAll();
+    List<Users> findByGroupId(Long groupId);
     Users findByManv(String manv);
     Users findByEmail(String email);
     Users findByPhone(String phone);

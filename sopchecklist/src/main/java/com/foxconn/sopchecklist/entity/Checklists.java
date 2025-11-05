@@ -8,6 +8,7 @@ import lombok.Setter;
 import javax.persistence.*;
 import java.time.LocalDateTime;
 import java.util.List;
+import javax.persistence.Transient;
 
 @Entity
 @Table(name = "Checklists")
@@ -48,9 +49,6 @@ public class Checklists {
 
     private Integer dueInDays;
 
-    // Số ngày trước hạn để nhắc nhở (có thể chọn theo ngày/tuần/tháng/năm quy đổi về ngày)
-    private Integer remindInDays;
-
     private Integer sopDocumentId;
 
     @Column(name = "status", columnDefinition = "NVARCHAR(50)", nullable = false)
@@ -59,5 +57,12 @@ public class Checklists {
     // Track khi nào thời gian bắt đầu hoặc lặp lại được thay đổi lần cuối
     @Column(name = "schedule_updated_at")
     private LocalDateTime scheduleUpdatedAt;
+
+    // Computed fields (not persisted)
+    @Transient
+    private LocalDateTime nextScheduledAt;
+
+    @Transient
+    private java.util.List<LocalDateTime> nextThreeScheduled;
 }
 

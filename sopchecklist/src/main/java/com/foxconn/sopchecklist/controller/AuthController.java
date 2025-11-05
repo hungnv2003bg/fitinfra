@@ -19,6 +19,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.util.List;
 import java.util.Map;
@@ -28,6 +29,7 @@ import java.util.stream.Collectors;
 import com.foxconn.sopchecklist.entity.Group;
 import com.foxconn.sopchecklist.entity.RefreshToken;
 import com.foxconn.sopchecklist.service.RefreshTokenService;
+import com.foxconn.sopchecklist.service.CronMailAllSendService;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -50,6 +52,12 @@ public class AuthController {
     
     @Autowired
     private RoleService roleService;
+    
+    @Autowired
+    private CronMailAllSendService cronMailAllSendService;
+    
+    @Value("${app.public.url}")
+    private String appPublicUrl;
 
     @PostMapping("/dangnhap")
     public ResponseEntity<?> dangNhap(@RequestBody LoginRequest login) throws Exception {
@@ -136,11 +144,58 @@ public class AuthController {
 
             Users savedUser = usersService.save(newUser);
             
+            // Gửi email thông báo đăng ký
+            try {
+                String subject = "Thông báo đăng ký tài khoản mới - " + savedUser.getFullName();
+                StringBuilder body = new StringBuilder();
+                body.append("<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:0 auto;\">");
+                body.append("<h2 style=\"color:#333;\">Thông báo đăng ký tài khoản mới</h2>");
+                body.append("<p>Hệ thống nhận được yêu cầu đăng ký tài khoản mới với thông tin sau:</p>");
+                body.append("<table style=\"width:100%;border-collapse:collapse;margin:16px 0;\">");
+                body.append("<tr><td style=\"border:1px solid #ddd;padding:8px;background:#f5f5f5;\">Họ và tên</td><td style=\"border:1px solid #ddd;padding:8px;\">").append(escapeHtml(savedUser.getFullName())).append("</td></tr>");
+                body.append("<tr><td style=\"border:1px solid #ddd;padding:8px;background:#f5f5f5;\">Mã nhân viên</td><td style=\"border:1px solid #ddd;padding:8px;\">").append(escapeHtml(savedUser.getManv())).append("</td></tr>");
+                body.append("<tr><td style=\"border:1px solid #ddd;padding:8px;background:#f5f5f5;\">Email</td><td style=\"border:1px solid #ddd;padding:8px;\">").append(escapeHtml(savedUser.getEmail())).append("</td></tr>");
+                if (savedUser.getPhone() != null && !savedUser.getPhone().trim().isEmpty()) {
+                    body.append("<tr><td style=\"border:1px solid #ddd;padding:8px;background:#f5f5f5;\">Số điện thoại</td><td style=\"border:1px solid #ddd;padding:8px;\">").append(escapeHtml(savedUser.getPhone())).append("</td></tr>");
+                }
+                body.append("<tr><td style=\"border:1px solid #ddd;padding:8px;background:#f5f5f5;\">Trạng thái</td><td style=\"border:1px solid #ddd;padding:8px;\">").append(savedUser.getStatus() == UserStatus.INACTIVE ? "Chờ kích hoạt" : "Đã kích hoạt").append("</td></tr>");
+                body.append("</table>");
+                
+                // Deep link tới trang account detail
+                try {
+                    Long userId = savedUser.getUserID() != null ? savedUser.getUserID().longValue() : null;
+                    if (userId != null) {
+                        String link = appPublicUrl + "/account?userId=" + userId;
+                        body.append("<p style=\"margin-top:12px;\"><a href=\"")
+                                .append(link)
+                                .append("\" style=\"display:inline-block;background:#1890ff;color:#fff;padding:8px 12px;border-radius:4px;text-decoration:none;\">Xem chi tiết tài khoản</a></p>");
+                    }
+                } catch (Exception ignore) {}
+                
+                body.append("<p><strong>Trân trọng,</strong></p>");
+                body.append("<p><em>Hệ thống IT Management</em></p>");
+                body.append("</div>");
+                
+                cronMailAllSendService.sendSignupMail(subject, body.toString(), savedUser.getUserID() != null ? savedUser.getUserID().longValue() : null);
+            } catch (Exception emailException) {
+                // Log lỗi nhưng không fail registration
+                System.err.println("Error sending signup email: " + emailException.getMessage());
+            }
+            
             return ResponseEntity.ok(savedUser);
             
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Không thể tạo tài khoản: " + e.getMessage());
         }
+    }
+    
+    private String escapeHtml(String input) {
+        if (input == null) return "";
+        return input.replace("&", "&amp;")
+                   .replace("<", "&lt;")
+                   .replace(">", "&gt;")
+                   .replace("\"", "&quot;")
+                   .replace("'", "&#39;");
     }
 
     @GetMapping("/me")

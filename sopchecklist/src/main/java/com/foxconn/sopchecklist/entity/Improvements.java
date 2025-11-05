@@ -46,13 +46,15 @@ public class Improvements {
     private String issueDescription;
 
     // Người phụ trách (từ checklist detail chỗ người thực hiện)
-    @Column(name = "responsible")
-    private String responsible; // lưu giống định dạng implementer ở checklist detail (group:ID hoặc user:ID)
+    @ElementCollection
+    @CollectionTable(name = "improvement_responsible", joinColumns = @JoinColumn(name = "improvement_id"))
+    @Column(name = "responsible", columnDefinition = "NVARCHAR(500)")
+    private List<String> responsible; // lưu giống định dạng implementer ở checklist detail (group:ID hoặc user:ID)
 
     // Người phối hợp
     @ElementCollection
     @CollectionTable(name = "improvement_collaborators", joinColumns = @JoinColumn(name = "improvement_id"))
-    @Column(name = "collaborator")
+    @Column(name = "collaborator", columnDefinition = "NVARCHAR(500)")
     private List<String> collaborators;
 
     // Đã loại bỏ reportedBy, assignedTo theo yêu cầu
@@ -78,17 +80,20 @@ public class Improvements {
     @CollectionTable(name = "improvement_files", joinColumns = @JoinColumn(name = "improvement_id"))
     private List<FileInfo> files;
 
-    // Trạng thái
-    @Column(length = 50)
-    private String status;
-
-    // Tiến độ (%)
+    // Tiến độ (progress tổng hợp từ các progress con)
     @Column(name = "progress")
     private Integer progress;
 
-    // Nội dung tiến độ (mô tả chi tiết tiến độ hiện tại)
-    @Column(name = "progressDetail", columnDefinition = "NVARCHAR(MAX)")
-    private String progressDetail;
+    public void setProgress(Integer progress) {
+        this.progress = progress;
+    }
+    public Integer getProgress() {
+        return this.progress;
+    }
+
+    // Trạng thái
+    @Column(name = "status", length = 50, columnDefinition = "NVARCHAR(50)")
+    private String status;
 
     // Người sửa cuối cùng
     @Column(name = "lastEditedBy")
@@ -96,6 +101,10 @@ public class Improvements {
 
     @Column(name = "lastEditedAt")
     private LocalDateTime lastEditedAt;
+
+    // Người tạo
+    @Column(name = "createdBy")
+    private Integer createdBy;
 
     private LocalDateTime createdAt = LocalDateTime.now();
 }

@@ -10,6 +10,7 @@ import com.foxconn.sopchecklist.service.SOPDocumentFilesService;
 import com.foxconn.sopchecklist.service.UsersService;
 import com.foxconn.sopchecklist.service.SOPsService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import com.foxconn.sopchecklist.service.FileStorageService;
 import com.foxconn.sopchecklist.service.TimeService;
 import org.springframework.stereotype.Service;
@@ -32,6 +33,9 @@ public class SOPDocumentsServiceImpl implements SOPDocumentsService {
     @Autowired
     private SOPsService sopsService;
 
+    @Value("${app.public.url:http://10.228.64.77:3000}")
+    private String appPublicUrl;
+
     @Autowired
     private FileStorageService fileStorageService;
     
@@ -39,7 +43,7 @@ public class SOPDocumentsServiceImpl implements SOPDocumentsService {
     private TimeService timeService;
 
     @Autowired
-    private com.foxconn.sopchecklist.service.MailService mailService;
+    private com.foxconn.sopchecklist.service.CronMailAllSendService cronMailAllSendService;
 
     @Override
     public SOPDocuments findById(Integer id) {
@@ -79,7 +83,7 @@ public class SOPDocumentsServiceImpl implements SOPDocumentsService {
                 throw new RuntimeException("Title is required");
             }
             if (sopDocumentsRepository.existsBySop_IdAndTitleIgnoreCase(sopId, normalizedTitle)) {
-                throw new RuntimeException("Vui lòng đặt tên tài liệu khác !");
+                throw new RuntimeException("DUPLICATE_NAME");
             }
 
             SOPDocuments savedDocument = sopDocumentsRepository.saveAndFlush(document);
@@ -157,10 +161,8 @@ public class SOPDocumentsServiceImpl implements SOPDocumentsService {
                     Long sopIdMail = savedDocument.getSop() != null ? savedDocument.getSop().getId() : null;
                     Integer docId = savedDocument.getDocumentID();
                     if (sopIdMail != null && docId != null) {
-                        String appBase = System.getenv("APP_PUBLIC_URL");
-                        if (appBase == null || appBase.trim().isEmpty()) {
-                            appBase = "http://" + java.net.InetAddress.getLocalHost().getHostAddress() + ":3000";
-                        }
+                        // Use configured URL from application.properties
+                        String appBase = appPublicUrl;
                         String link = appBase + "/sops/" + sopIdMail + "?doc=" + docId;
                         body.append("<p style=\"margin-top:12px;\"><a href=\"").append(link)
                             .append("\" style=\"display:inline-block;background:#1677ff;color:#fff;padding:8px 12px;border-radius:4px;text-decoration:none;\">Mở tài liệu vừa tạo</a></p>");
@@ -170,7 +172,7 @@ public class SOPDocumentsServiceImpl implements SOPDocumentsService {
                 body.append("<p><strong>Trân trọng,</strong></p>");
                 body.append("</div>");
 
-                mailService.createMail(subject, body.toString());
+                cronMailAllSendService.sendSOPSMail(subject, body.toString(), null);
             } catch (Exception ex) {
             }
 
@@ -186,7 +188,7 @@ public class SOPDocumentsServiceImpl implements SOPDocumentsService {
             Long sopId = document.getSop().getId();
             String normalizedTitle = document.getTitle() != null ? document.getTitle().trim() : "";
             if (sopDocumentsRepository.existsBySop_IdAndTitleIgnoreCaseAndDocumentIDNot(sopId, normalizedTitle, document.getDocumentID())) {
-                throw new RuntimeException("Vui lòng đặt tên tài liệu khác !");
+                throw new RuntimeException("DUPLICATE_NAME");
             }
         }
         return sopDocumentsRepository.save(document);

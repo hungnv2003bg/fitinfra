@@ -43,13 +43,13 @@ export default function ImprovementDetailModal({ open, record, onCancel, groups 
       statusMap: { PENDING: 'Chưa thực hiện', IN_PROGRESS: 'Đang thực hiện', DONE: 'Hoàn thành' }
     },
     zh: {
-      title: '改进详情',
+      title: '問題管理',
       category: '任务名称',
-      improvementEvent: '改进事件',
+      improvementEvent: '問題管理事件',
       responsible: '负责人',
       collaborators: '协同人',
       content: '工作内容',
-      actionPlan: '改进行动',
+      actionPlan: '問題管理行动',
       planned: '预计完成',
       completed: '完成时间',
       note: '备注',
@@ -111,7 +111,13 @@ export default function ImprovementDetailModal({ open, record, onCancel, groups 
       <Descriptions column={1} bordered size="small">
         <Descriptions.Item label={t.category}>{record.category || '-'}</Descriptions.Item>
         <Descriptions.Item label={t.content}>{record.issueDescription || '-'}</Descriptions.Item>
-        <Descriptions.Item label={t.responsible}>{getResponsibleDisplay(record.responsible)}</Descriptions.Item>
+        <Descriptions.Item label={t.responsible}>
+          {record.responsible ? (
+            Array.isArray(record.responsible) 
+              ? (record.responsible.length > 0 ? record.responsible.map(getResponsibleDisplay).join(', ') : '-')
+              : getResponsibleDisplay(record.responsible)
+          ) : '-'}
+        </Descriptions.Item>
         <Descriptions.Item label={t.collaborators}>{Array.isArray(record.collaborators) && record.collaborators.length ? record.collaborators.map(getResponsibleDisplay).join(', ') : '-'}</Descriptions.Item>
         <Descriptions.Item label={t.improvementEvent}>{record.improvementEvent?.eventName || record.improvementEventName || '-'}</Descriptions.Item>
         <Descriptions.Item label={t.actionPlan}>{record.actionPlan || '-'}</Descriptions.Item>
@@ -120,7 +126,6 @@ export default function ImprovementDetailModal({ open, record, onCancel, groups 
         <Descriptions.Item label={t.note}>{record.note || '-'}</Descriptions.Item>
         <Descriptions.Item label={t.status}>{statusCode ? t.statusMap[statusCode] : '-'}</Descriptions.Item>
         <Descriptions.Item label={t.progress}>{record.progress != null ? `${record.progress}%` : '-'}</Descriptions.Item>
-        <Descriptions.Item label={lang === 'vi' ? 'Nội dung tiến độ' : '进度说明'}>{record.progressDetail || '-'}</Descriptions.Item>
         <Descriptions.Item label={t.files}>
           {Array.isArray(record.files) && record.files.length > 0 ? (
             <div>

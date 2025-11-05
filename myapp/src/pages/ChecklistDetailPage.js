@@ -1,13 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Table, Button, Tag, Spin, message, Upload, Input, DatePicker, Select, Space, Modal, Descriptions, Form, List } from "antd";
+import { Table, Button, Tag, Spin, message, Upload, Input, DatePicker, Select, Space, Modal, Descriptions, Form, List, notification, Dropdown } from "antd";
 import { useParams, useNavigate } from "react-router-dom";
-import { UploadOutlined, ArrowLeftOutlined, EyeOutlined, SwapOutlined, DeleteOutlined } from "@ant-design/icons";
+import { UploadOutlined, ArrowLeftOutlined, EyeOutlined, SwapOutlined, DeleteOutlined, MailOutlined, DownloadOutlined, FilePdfOutlined, FileExcelOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { validateFileSize, formatFileSize } from "../utils/fileUtils";
 import { formatDateShortVN } from "../utils/dateUtils";
 import axios from "../plugins/axios";
 import API_CONFIG from "../config/api";
 import { useSelector } from "react-redux";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const LOCATIONS = ["F01", "F02", "F03", "F04", "F05"];
 
@@ -15,6 +16,7 @@ export default function ChecklistDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { nguoiDung } = useSelector(state => state.user);
+  const { lang } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState([]);
   const [task, setTask] = useState(null);
@@ -24,37 +26,75 @@ export default function ChecklistDetailPage() {
   const [users, setUsers] = useState([]);
   const [editStatusRecord, setEditStatusRecord] = useState(null);
   const [statusForm] = Form.useForm();
+  const [searchText, setSearchText] = useState("");
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [existingFiles, setExistingFiles] = useState([]);
+  const [sendingMail, setSendingMail] = useState(false);
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
+  const [statusFilter, setStatusFilter] = useState(undefined);
+  const [groupFilter, setGroupFilter] = useState(undefined);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`/api/checklist-details`, { params: { parentId: String(id) } });
-      const data = res.data;
-      const items = Array.isArray(data) ? data : [];
-      // Normalize snake_case fields from backend to camelCase for UI rendering
-      const normalized = items.map((item) => ({
-        ...item,
-        createdAt: item.createdAt || item.created_at || null,
-        scheduledAt: item.scheduledAt || item.scheduled_at || null,
-        deadlineAt: item.deadlineAt || item.deadline_at || null,
-        abnormalInfo: item.abnormalInfo || item.abnormal_info || "",
-        // map backend work_content/workContent into workContent which drives "Nội dung công việc"
-        workContent: item.workContent || item.work_content || "",
-        note: item.note || "",
-        taskName: item.taskName || item.task_name || "",
-        files: Array.isArray(item.files) ? item.files : [],
-        completedAt: (item.status === 'COMPLETED' || item.status === 'DONE') ? (item.last_edited_at || item.lastEditedAt || item.completedAt) : null,
-        status: item.status || item.state || "",
-      }));
-      setRows(normalized);
+      // Check if this is a specific checklist detail ID (from email link)
+      const isDetailId = window.location.pathname.includes('/checklist-detail/');
+      
+      if (isDetailId) {
+        // Fetch specific checklist detail by ID
+        const res = await axios.get(`/api/checklist-details/${id}`);
+        const detail = res.data;
+        
+        if (detail) {
+          const normalized = {
+            ...detail,
+            createdAt: detail.createdAt || detail.created_at || null,
+            scheduledAt: detail.scheduledAt || detail.scheduled_at || null,
+            deadlineAt: detail.deadlineAt || detail.deadline_at || null,
+            abnormalInfo: detail.abnormalInfo || detail.abnormal_info || "",
+            workContent: detail.workContent || detail.work_content || "",
+            note: detail.note || "",
+            taskName: detail.taskName || detail.task_name || "",
+            files: Array.isArray(detail.files) ? detail.files : [],
+            completedAt: (detail.status === 'COMPLETED' || detail.status === 'DONE') ? (detail.last_edited_at || detail.lastEditedAt || detail.completedAt) : null,
+            status: detail.status || detail.state || "",
+          };
+          setRows([normalized]);
+        } else {
+          setRows([]);
+        }
+      } else {
+        // Original logic for checklist parent ID
+        const params = { parentId: String(id) };
+        if (statusFilter) params.status = statusFilter;
+        if (groupFilter) params.groupId = groupFilter;
+        if (searchText) params.q = searchText;
+        const res = await axios.get(`/api/checklist-details`, { params });
+        const data = res.data;
+        const items = Array.isArray(data) ? data : [];
+        
+        // Hiển thị tất cả các checklist details
+        const normalizedItems = items.map(item => ({
+          ...item,
+          createdAt: item.createdAt || item.created_at || null,
+          scheduledAt: item.scheduledAt || item.scheduled_at || null,
+          deadlineAt: item.deadlineAt || item.deadline_at || null,
+          abnormalInfo: item.abnormalInfo || item.abnormal_info || "",
+          workContent: item.workContent || item.work_content || "",
+          note: item.note || "",
+          taskName: item.taskName || item.task_name || "",
+          files: Array.isArray(item.files) ? item.files : [],
+          completedAt: (item.status === 'COMPLETED' || item.status === 'DONE') ? (item.last_edited_at || item.lastEditedAt || item.completedAt) : null,
+          status: item.status || item.state || "",
+        }));
+        setRows(normalizedItems);
+      }
     } catch (e) {
       setRows([]);
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, statusFilter, groupFilter, searchText]);
 
 
   const ensureWeeklyRows = useCallback(async () => {
@@ -136,8 +176,9 @@ export default function ChecklistDetailPage() {
       await axios.patch(`/api/checklist-details/${encodeURIComponent(String(record.id))}`, patch);
       fetchData();
     } catch (e) {
-      message.error({
-        content: "Cập nhật thất bại",
+      notification.error({
+        message: lang === 'vi' ? 'Hệ thống' : '系统',
+        description: lang === 'vi' ? 'Cập nhật thất bại' : '更新失败',
         placement: 'bottomRight'
       });
     } finally {
@@ -174,11 +215,11 @@ export default function ChecklistDetailPage() {
       const id = Number(idStr);
       if (type === 'group') {
         const g = groups.find(x => x.id === id);
-        return g?.name || `Nhóm ${id}`;
+        return g?.name || (lang === 'vi' ? `Nhóm ${id}` : `组 ${id}`);
       }
       if (type === 'user') {
         const u = users.find(x => x.userID === id);
-        return (u?.fullName || u?.manv || `User ${id}`);
+        return (u?.fullName || u?.manv || (lang === 'vi' ? `User ${id}` : `用户 ${id}`));
       }
     }
     // fallback: maybe already name
@@ -192,6 +233,16 @@ export default function ChecklistDetailPage() {
   };
 
   const getStatusDisplay = (status) => {
+    if (lang === 'zh') {
+      switch (status) {
+        case 'IN_PROGRESS': return '进行中';
+        case 'COMPLETED': return '已完成';
+        case 'CANCELLED': return '已取消';
+        case 'PENDING': return '进行中';
+        case 'DONE': return '已完成';
+        default: return status || '进行中';
+      }
+    }
     switch (status) {
       case 'IN_PROGRESS': return 'Đang xử lý';
       case 'COMPLETED': return 'Hoàn thành';
@@ -199,6 +250,27 @@ export default function ChecklistDetailPage() {
       case 'PENDING': return 'Đang xử lý';
       case 'DONE': return 'Hoàn thành';
       default: return status || 'Đang xử lý';
+    }
+  };
+
+  const handleSendMail = async (record) => {
+    try {
+      setSendingMail(true);
+      await axios.post(`/api/checklist-details/${encodeURIComponent(String(record.id))}/send-mail`);
+      notification.success({
+        message: lang === 'vi' ? 'Hệ thống' : '系统',
+        description: lang === 'vi' ? 'Đã gửi mail tới người thực hiện' : '已发送邮件给执行人',
+        placement: 'bottomRight',
+      });
+    } catch (error) {
+      console.error('Error sending mail:', error);
+      notification.error({
+        message: lang === 'vi' ? 'Hệ thống' : '系统',
+        description: (lang === 'vi' ? 'Gửi mail thất bại: ' : '发送邮件失败: ') + (error.response?.data?.message || error.message),
+        placement: 'bottomRight'
+      });
+    } finally {
+      setSendingMail(false);
     }
   };
 
@@ -214,8 +286,45 @@ export default function ChecklistDetailPage() {
     }
   };
 
-
-  const t = {
+  const t = lang === 'zh' ? {
+    back: '返回',
+    header: '工作详情',
+    stt: 'STT',
+    taskName: '任务名称',
+    workContent: '工作内容',
+    implementer: '执行人',
+    createdAt: '创建日期',
+    deadlineAt: '完成期限',
+    completedAt: '完成日期',
+    status: '状态',
+    actions: '操作',
+    changeStatus: '更改状态 / 更新',
+    view: '查看',
+    modalUpdateTitle: '更新状态',
+    save: '保存',
+    attach: '附件',
+    existingFiles: '已有文件',
+    removeFile: '从记录中删除此文件',
+    chooseFiles: '选择文件',
+    fileTooLarge: '文件太大',
+    updated: '已更新',
+    updateFailed: '更新失败',
+    note: '备注',
+    notePh: '输入备注',
+    abnormal: '异常（异常将被转到改进部分）',
+    abnormalPh: '描述异常',
+    viewTitle: '查看详情',
+    mustDoAt: '必须执行时间',
+    attachments: '附件',
+    openImprovement: '打开改进列表',
+    lockMsg: '距离完成日期已超过7天 - 无法编辑',
+    sendMail: '发送邮件提醒需要完成的工作',
+    selectStatus: '请选择状态',
+    uploadFileError: '上传文件错误',
+    exportPrint: '导出/打印',
+    exportPDF: '导出PDF',
+    exportExcel: '导出Excel'
+  } : {
     back: 'Quay lại',
     header: 'Chi tiết công việc',
     stt: 'STT',
@@ -240,16 +349,183 @@ export default function ChecklistDetailPage() {
     updateFailed: 'Cập nhật thất bại',
     note: 'Ghi chú',
     notePh: 'Nhập ghi chú',
-    abnormal: 'Bất thường',
+    abnormal: 'Bất thường (Bất thường sẽ được chuyển đến phần Improvement)',
     abnormalPh: 'Mô tả bất thường',
     viewTitle: 'Xem chi tiết',
     mustDoAt: 'Thời gian phải làm',
     attachments: 'Tệp đính kèm',
-    openImprovement: 'Mở danh sách Improvement'
+    openImprovement: 'Mở danh sách Improvement',
+    lockMsg: 'Đã quá 7 ngày kể từ Ngày hoàn thành - không thể chỉnh sửa',
+    sendMail: 'Gửi mail nhắc việc cần hoàn thành',
+    selectStatus: 'Chọn trạng thái',
+    uploadFileError: 'Lỗi upload file',
+    exportPrint: 'Xuất/In',
+    exportPDF: 'Xuất PDF',
+    exportExcel: 'Xuất Excel'
+  };
+
+  const handleExportPDF = () => {
+    try {
+      // Tạo HTML table để in
+      const printWindow = window.open('', '_blank');
+      const tableData = rows.map((row, index) => {
+        const stt = ((pagination.current - 1) * pagination.pageSize) + index + 1;
+        const statusDisplay = getStatusDisplay(row.status);
+        const implementerDisplay = getImplementerDisplay(row.implementer);
+        return `
+          <tr>
+            <td>${stt}</td>
+            <td>${row.taskName || '-'}</td>
+            <td>${row.workContent || '-'}</td>
+            <td>${implementerDisplay}</td>
+            <td>${formatDateShortVN(row.createdAt)}</td>
+            <td>${row.deadlineAt ? formatDateShortVN(row.deadlineAt) : '-'}</td>
+            <td>${row.completedAt ? formatDateShortVN(row.completedAt) : '-'}</td>
+            <td>${statusDisplay}</td>
+          </tr>
+        `;
+      }).join('');
+
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>${task?.taskName || t.header}</title>
+          <style>
+            @media print {
+              @page { margin: 1cm; }
+            }
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            h1 { text-align: center; margin-bottom: 20px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; font-weight: bold; }
+            tr:nth-child(even) { background-color: #f9f9f9; }
+          </style>
+        </head>
+        <body>
+          <h1>${task?.taskName || t.header}</h1>
+          <table>
+            <thead>
+              <tr>
+                <th>${t.stt}</th>
+                <th>${t.taskName}</th>
+                <th>${t.workContent}</th>
+                <th>${t.implementer}</th>
+                <th>${t.createdAt}</th>
+                <th>${t.deadlineAt}</th>
+                <th>${t.completedAt}</th>
+                <th>${t.status}</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tableData}
+            </tbody>
+          </table>
+        </body>
+        </html>
+      `;
+      
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+      }, 250);
+      
+      notification.success({
+        message: lang === 'vi' ? 'Hệ thống' : '系统',
+        description: lang === 'vi' ? 'Đã mở cửa sổ in PDF' : '已打开PDF打印窗口',
+        placement: 'bottomRight'
+      });
+    } catch (error) {
+      notification.error({
+        message: lang === 'vi' ? 'Hệ thống' : '系统',
+        description: lang === 'vi' ? 'Lỗi khi xuất PDF: ' + error.message : '导出PDF错误: ' + error.message,
+        placement: 'bottomRight'
+      });
+    }
+  };
+
+  const handleExportExcel = () => {
+    try {
+      // Tạo CSV content (có thể mở bằng Excel)
+      const headers = [
+        t.stt,
+        t.taskName,
+        t.workContent,
+        t.implementer,
+        t.createdAt,
+        t.deadlineAt,
+        t.completedAt,
+        t.status
+      ];
+
+      const csvRows = [
+        headers.join(','),
+        ...rows.map((row, index) => {
+          const stt = ((pagination.current - 1) * pagination.pageSize) + index + 1;
+          const statusDisplay = getStatusDisplay(row.status);
+          const implementerDisplay = getImplementerDisplay(row.implementer);
+          
+          // Escape commas and quotes in CSV
+          const escapeCSV = (str) => {
+            if (!str) return '';
+            const s = String(str);
+            if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+              return `"${s.replace(/"/g, '""')}"`;
+            }
+            return s;
+          };
+
+          return [
+            stt,
+            escapeCSV(row.taskName || '-'),
+            escapeCSV(row.workContent || '-'),
+            escapeCSV(implementerDisplay),
+            escapeCSV(formatDateShortVN(row.createdAt)),
+            escapeCSV(row.deadlineAt ? formatDateShortVN(row.deadlineAt) : '-'),
+            escapeCSV(row.completedAt ? formatDateShortVN(row.completedAt) : '-'),
+            escapeCSV(statusDisplay)
+          ].join(',');
+        })
+      ];
+
+      const csvContent = csvRows.join('\n');
+      
+      // Add BOM for UTF-8 Excel support
+      const BOM = '\uFEFF';
+      const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const fileName = `${task?.taskName || 'Checklist'}_${dayjs().format('YYYY-MM-DD_HH-mm-ss')}.csv`;
+      
+      link.href = url;
+      link.download = fileName;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      notification.success({
+        message: lang === 'vi' ? 'Hệ thống' : '系统',
+        description: lang === 'vi' ? 'Đã xuất Excel thành công' : '已成功导出Excel',
+        placement: 'bottomRight'
+      });
+    } catch (error) {
+      notification.error({
+        message: lang === 'vi' ? 'Hệ thống' : '系统',
+        description: lang === 'vi' ? 'Lỗi khi xuất Excel: ' + error.message : '导出Excel错误: ' + error.message,
+        placement: 'bottomRight'
+      });
+    }
   };
 
   const columns = [
-    { title: t.stt, key: "stt", width: 70, render: (_, __, index) => <Tag color="blue">{index + 1}</Tag> },
+    { title: t.stt, key: "stt", width: 70, render: (_, __, index) => <Tag color="blue">{((pagination.current - 1) * pagination.pageSize) + index + 1}</Tag> },
     { title: t.taskName, dataIndex: "taskName", key: "taskName", width: 220, render: (v) => v || '-' },
     { title: t.workContent, dataIndex: "workContent", key: "workContent", width: 240, render: (v) => v || '-' },
     {
@@ -277,21 +553,21 @@ export default function ChecklistDetailPage() {
       title: t.actions,
       key: "action",
       fixed: "right",
-      width: 160,
+      width: 200,
       align: "center",
       render: (_, record) => {
         const locked = isEditLocked(record);
-        const lockMsg = 'Đã quá 7 ngày kể từ Ngày hoàn thành - không thể chỉnh sửa';
+        const isCompleted = record.status === 'COMPLETED' || record.status === 'DONE';
         return (
           <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
             <Button 
               size="small" 
               icon={<SwapOutlined style={{ fontSize: '16px' }} />} 
-              title={locked ? lockMsg : t.changeStatus}
+              title={locked ? t.lockMsg : t.changeStatus}
               disabled={locked}
               onClick={() => {
                 if (locked) {
-                  message.warning({ content: lockMsg, placement: 'bottomRight' });
+                  notification.warning({ message: lang === 'vi' ? 'Hệ thống' : '系统', description: t.lockMsg, placement: 'bottomRight' });
                   return;
                 }
                 setEditStatusRecord(record);
@@ -311,6 +587,15 @@ export default function ChecklistDetailPage() {
               onClick={() => setViewRecord(record)} 
               title={t.view} 
             />
+            <Button 
+              size="small" 
+              icon={<MailOutlined style={{ fontSize: '16px' }} />} 
+              onClick={() => handleSendMail(record)} 
+              title={t.sendMail}
+              loading={sendingMail}
+              disabled={isCompleted}
+              type={!isCompleted ? 'primary' : 'default'}
+            />
           </div>
         );
       }
@@ -326,12 +611,71 @@ export default function ChecklistDetailPage() {
         </h2>
         <div />
       </div>
+      <div style={{ marginBottom: 12, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <Input
+          placeholder={lang === 'vi' ? 'Tìm theo tên/nội dung công việc...' : '按任务名称/内容搜索'}
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+          style={{ width: 300 }}
+          allowClear
+        />
+        <Select
+          placeholder={lang === 'vi' ? 'Lọc theo trạng thái' : '按状态筛选'}
+          allowClear
+          value={statusFilter}
+          onChange={setStatusFilter}
+          style={{ width: 200 }}
+        >
+          <Select.Option value="IN_PROGRESS">{lang === 'vi' ? 'Đang xử lý' : '进行中'}</Select.Option>
+          <Select.Option value="COMPLETED">{lang === 'vi' ? 'Hoàn thành' : '已完成'}</Select.Option>
+          <Select.Option value="CANCELLED">{lang === 'vi' ? 'Đã hủy' : '已取消'}</Select.Option>
+        </Select>
+        <Select
+          placeholder={lang === 'vi' ? 'Lọc theo nhóm' : '按组筛选'}
+          allowClear
+          value={groupFilter}
+          onChange={setGroupFilter}
+          style={{ width: 220 }}
+        >
+          {groups.map(g => (
+            <Select.Option key={g.id} value={g.id}>{g.name}</Select.Option>
+          ))}
+        </Select>
+        <Button onClick={() => { setStatusFilter(undefined); setGroupFilter(undefined); setSearchText(""); }}>
+          {lang === 'vi' ? 'Xóa bộ lọc' : '清除筛选'}
+        </Button>
+        <Dropdown
+          menu={{
+            items: [
+              {
+                key: 'pdf',
+                label: t.exportPDF,
+                icon: <FilePdfOutlined />,
+                onClick: () => handleExportPDF()
+              },
+              {
+                key: 'excel',
+                label: t.exportExcel,
+                icon: <FileExcelOutlined />,
+                onClick: () => handleExportExcel()
+              }
+            ]
+          }}
+          trigger={['click']}
+        >
+          <Button icon={<DownloadOutlined />}>
+            {t.exportPrint}
+          </Button>
+        </Dropdown>
+      </div>
       <Spin spinning={loading}>
         <Table 
           rowKey="id" 
           dataSource={rows} 
           columns={columns}
           scroll={{ x: 1300 }}
+          pagination={{ current: pagination.current, pageSize: pagination.pageSize, showSizeChanger: true, showQuickJumper: true }}
+          onChange={(p) => setPagination({ current: p.current, pageSize: p.pageSize })}
         />
       </Spin>
       {}
@@ -378,7 +722,11 @@ export default function ChecklistDetailPage() {
                     });
                   } catch (error) {
                     console.error('Error uploading file:', file.name, error);
-                    message.error({ content: `Lỗi upload file ${file.name}: ${error.message}`, placement: 'bottomRight' });
+                    notification.error({ 
+                      message: lang === 'vi' ? 'Hệ thống' : '系统', 
+                      description: `${t.uploadFileError} ${file.name}: ${error.message}`, 
+                      placement: 'bottomRight' 
+                    });
                   }
                 }
               }
@@ -404,7 +752,11 @@ export default function ChecklistDetailPage() {
             updateData.files = allFiles;
             
             await axios.patch(`/api/checklist-details/${encodeURIComponent(String(editStatusRecord.id))}`, updateData);
-            message.success({ content: t.updated, placement: 'bottomRight' });
+            notification.success({
+              message: lang === 'vi' ? 'Hệ thống' : '系统',
+              description: t.updated,
+              placement: 'bottomRight',
+            });
             setEditStatusRecord(null);
             setUploadedFiles([]);
             setExistingFiles([]);
@@ -412,18 +764,18 @@ export default function ChecklistDetailPage() {
           } catch (e) {
             // ignore if validation error
             if (e?.response) {
-              message.error({ content: t.updateFailed, placement: 'bottomRight' });
+              notification.error({ message: lang === 'vi' ? 'Hệ thống' : '系统', description: t.updateFailed, placement: 'bottomRight' });
             }
           }
         }}
       >
         <Form form={statusForm} layout="vertical">
-          <Form.Item name="status" label={t.status} rules={[{ required: true, message: 'Chọn trạng thái' }]}>
+          <Form.Item name="status" label={t.status} rules={[{ required: true, message: t.selectStatus }]}>
             <Select
               options={[
-                { value: 'IN_PROGRESS', label: 'Đang xử lý' },
-                { value: 'COMPLETED', label: 'Hoàn thành' },
-                { value: 'CANCELLED', label: 'Đã hủy' },
+                { value: 'IN_PROGRESS', label: lang === 'vi' ? 'Đang xử lý' : '进行中' },
+                { value: 'COMPLETED', label: lang === 'vi' ? 'Hoàn thành' : '已完成' },
+                { value: 'CANCELLED', label: lang === 'vi' ? 'Đã hủy' : '已取消' },
               ]}
             />
           </Form.Item>
@@ -463,7 +815,7 @@ export default function ChecklistDetailPage() {
               showUploadList={false}
               beforeUpload={async (file) => {
                 if (!validateFileSize(file)) {
-                  message.error({ content: t.fileTooLarge, placement: 'bottomRight' });
+                  notification.error({ message: lang === 'vi' ? 'Hệ thống' : '系统', description: t.fileTooLarge, placement: 'bottomRight' });
                   return false;
                 }
                 return false; // prevent auto upload; we manage list in onChange
@@ -531,7 +883,6 @@ export default function ChecklistDetailPage() {
             <Descriptions.Item label={t.taskName}>{viewRecord.taskName || '-'}</Descriptions.Item>
             <Descriptions.Item label={t.workContent}>{viewRecord.workContent || '-'}</Descriptions.Item>
             <Descriptions.Item label={t.implementer}>{getImplementerDisplay(viewRecord.implementer)}</Descriptions.Item>
-            <Descriptions.Item label={t.mustDoAt}>{formatDateShortVN(viewRecord.scheduledAt)}</Descriptions.Item>
             <Descriptions.Item label={t.createdAt}>{formatDateShortVN(viewRecord.createdAt)}</Descriptions.Item>
             <Descriptions.Item label={t.deadlineAt}>{viewRecord.deadlineAt ? formatDateShortVN(viewRecord.deadlineAt) : '-'}</Descriptions.Item>
             <Descriptions.Item label={t.status}>{getStatusDisplay(viewRecord.status)}</Descriptions.Item>

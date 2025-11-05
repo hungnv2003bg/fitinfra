@@ -1,85 +1,82 @@
 package com.foxconn.sopchecklist.service.serviceImpl;
 
-import com.foxconn.sopchecklist.entity.MailRecipient;
-import com.foxconn.sopchecklist.repository.MailRecipientRepository;
+import com.foxconn.sopchecklist.entity.MailRecipientAll;
+import com.foxconn.sopchecklist.entity.TypeMailRecipient;
+import com.foxconn.sopchecklist.repository.MailRecipientAllRepository;
 import com.foxconn.sopchecklist.service.MailRecipientService;
 import com.foxconn.sopchecklist.service.TimeService;
+import com.foxconn.sopchecklist.service.TypeMailRecipientService;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class MailRecipientServiceImpl implements MailRecipientService {
 
-    private final MailRecipientRepository repository;
+    private final MailRecipientAllRepository repository;
+    private final TypeMailRecipientService typeMailRecipientService;
     private final TimeService timeService;
 
-    public MailRecipientServiceImpl(MailRecipientRepository repository, TimeService timeService) {
+    public MailRecipientServiceImpl(MailRecipientAllRepository repository,
+                                    TypeMailRecipientService typeMailRecipientService,
+                                    TimeService timeService) {
         this.repository = repository;
+        this.typeMailRecipientService = typeMailRecipientService;
         this.timeService = timeService;
     }
 
     @Override
-    public MailRecipient add(MailRecipient r) {
-        if (r.getEmail() == null || r.getEmail().trim().isEmpty()) {
-            throw new IllegalArgumentException("Email is required");
-        }
-        if (r.getType() == null || r.getType().trim().isEmpty()) {
-            throw new IllegalArgumentException("Type is required");
-        }
-        if (repository.existsByEmailIgnoreCaseAndType(r.getEmail().trim(), r.getType().trim())) {
-            throw new IllegalArgumentException("Email already exists for type");
-        }
-        r.setEnabled(r.getEnabled() == null ? true : r.getEnabled());
-        r.setCreatedAt(timeService.nowVietnam());
-        r.setUpdatedAt(timeService.nowVietnam());
-        return repository.save(r);
+    public List<String> getRecipientsByEventAndType(String eventType, String mailType) {
+        List<MailRecipientAll> recipients = repository.findByTypeAndTypeMailRecipientTypeNameAndEnabledTrue(mailType, eventType);
+        return recipients.stream()
+                .map(MailRecipientAll::getEmail)
+                .filter(e -> e != null && !e.trim().isEmpty())
+                .collect(Collectors.toList());
     }
 
     @Override
-    public MailRecipient update(Long id, MailRecipient r) {
-        MailRecipient existing = repository.findById(id).orElseThrow(() -> new IllegalArgumentException("Not found"));
-        if (r.getEmail() != null) existing.setEmail(r.getEmail());
-        if (r.getType() != null) existing.setType(r.getType());
-        if (r.getEnabled() != null) existing.setEnabled(r.getEnabled());
-        if (r.getNote() != null) existing.setNote(r.getNote());
-        existing.setUpdatedAt(timeService.nowVietnam());
-        return repository.save(existing);
+    public List<String> getToRecipients(String eventType) {
+        return getRecipientsByEventAndType(eventType, "TO");
     }
 
     @Override
-    public void delete(Long id) { repository.deleteById(id); }
+    public List<String> getCcRecipients(String eventType) {
+        return getRecipientsByEventAndType(eventType, "CC");
+    }
 
     @Override
-    public List<MailRecipient> listAll() { return repository.findAll(); }
+    public List<String> getBccRecipients(String eventType) {
+        return getRecipientsByEventAndType(eventType, "BCC");
+    }
 
     @Override
-    public List<MailRecipient> listEnabled() { return repository.findByEnabledTrue(); }
+    public MailRecipientAll addRecipient(String email, String eventType, String mailType, String note) {
+        // Tìm hoặc tạo TypeMailRecipient
+        TypeMailRecipient typeMailRecipient = typeMailRecipientService.findByTypeName(eventType);
+        if (typeMailRecipient == null) {
+            typeMailRecipient = new TypeMailRecipient();
+            typeMailRecipient.setTypeName(eventType);
+            typeMailRecipient.setDescription("Auto-created event type: " + eventType);
+            typeMailRecipient.setEnabled(true);
+            typeMailRecipient = typeMailRecipientService.add(typeMailRecipient);
+        }
+
+        MailRecipientAll recipient = new MailRecipientAll();
+        recipient.setEmail(email);
+        recipient.setType(mailType);
+        recipient.setTypeMailRecipient(typeMailRecipient);
+        recipient.setNote(note);
+        recipient.setEnabled(true);
+        recipient.setCreatedAt(timeService.nowVietnam());
+        recipient.setUpdatedAt(timeService.nowVietnam());
+
+        return repository.save(recipient);
+    }
 
     @Override
-    public void replaceAll(String mailToCsv, String mailCcCsv, String mailBccCsv) {
-        // simple approach: clear and insert
-        repository.deleteAll();
-
-        java.util.function.BiConsumer<String, String> addAll = (csv, type) -> {
-            if (csv == null || csv.trim().isEmpty()) return;
-            for (String raw : csv.split(",")) {
-                String email = raw.trim();
-                if (email.isEmpty()) continue;
-                MailRecipient r = new MailRecipient();
-                r.setEmail(email);
-                r.setType(type);
-                r.setEnabled(true);
-                r.setCreatedAt(timeService.nowVietnam());
-                r.setUpdatedAt(timeService.nowVietnam());
-                repository.save(r);
-            }
-        };
-
-        addAll.accept(mailToCsv, "TO");
-        addAll.accept(mailCcCsv, "CC");
-        addAll.accept(mailBccCsv, "BCC");
+    public void clearRecipientsByEvent(String eventType) {
+        List<MailRecipientAll> recipients = repository.findByTypeMailRecipientTypeNameAndEnabledTrue(eventType);
+        repository.deleteAll(recipients);
     }
 }
-
-

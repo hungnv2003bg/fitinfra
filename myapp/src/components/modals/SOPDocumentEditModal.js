@@ -231,9 +231,16 @@ export default function SOPDocumentEditModal({ open, record, onCancel, onSaved }
       
     } catch (err) {
       let errorMessage = lang === 'zh' ? "更新文档失败" : "Cập nhật tài liệu thất bại";
-      if (err?.response?.data) {
-        const data = err.response.data;
-        errorMessage = data.error || data.message || JSON.stringify(data);
+      const data = err?.response?.data;
+      if (data) {
+        const raw = data.error || data.message || '';
+        if (data.error === 'DUPLICATE_NAME' || /đã tồn tại|exists|duplicate/i.test(raw)) {
+          errorMessage = lang === 'zh'
+            ? `已存在 "${data.duplicateName || data.duplicateValue || ''}"，请使用其他名称。`
+            : `Đã tồn tại "${data.duplicateName || data.duplicateValue || ''}". Vui lòng chọn tên khác.`;
+        } else {
+          errorMessage = raw || (lang === 'zh' ? "更新文档失败" : "Cập nhật tài liệu thất bại");
+        }
       } else if (err?.message) {
         errorMessage = err.message;
       }

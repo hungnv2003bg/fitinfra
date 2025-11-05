@@ -5,6 +5,7 @@ import com.foxconn.sopchecklist.entity.ImprovementEvent;
 import com.foxconn.sopchecklist.repository.ImprovementsRepository;
 import com.foxconn.sopchecklist.repository.ImprovementEventRepository;
 import com.foxconn.sopchecklist.service.TimeService;
+import com.foxconn.sopchecklist.service.MailImprovementDoneService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,11 +21,13 @@ public class ImprovementsController {
     private final ImprovementsRepository repository;
     private final ImprovementEventRepository eventRepository;
     private final TimeService timeService;
+    private final MailImprovementDoneService mailImprovementDoneService;
 
-    public ImprovementsController(ImprovementsRepository repository, ImprovementEventRepository eventRepository, TimeService timeService) {
+    public ImprovementsController(ImprovementsRepository repository, ImprovementEventRepository eventRepository, TimeService timeService, MailImprovementDoneService mailImprovementDoneService) {
         this.repository = repository;
         this.eventRepository = eventRepository;
         this.timeService = timeService;
+        this.mailImprovementDoneService = mailImprovementDoneService;
     }
 
     @GetMapping
@@ -57,6 +60,10 @@ public class ImprovementsController {
     public ResponseEntity<Improvements> create(@RequestBody Improvements body) {
         body.setImprovementID(null);
         body.setCreatedAt(timeService.nowVietnam());
+        // createdBy if provided
+        if (body.getCreatedBy() == null && body.getLastEditedBy() != null) {
+            body.setCreatedBy(body.getLastEditedBy());
+        }
         
         // Set lastEditedBy and lastEditedAt for new records
         if (body.getLastEditedBy() != null) {
@@ -85,6 +92,13 @@ public class ImprovementsController {
         if (body.getImprovementEvent() != null && body.getImprovementEvent().getId() != null) {
             ImprovementEvent event = eventRepository.findById(body.getImprovementEvent().getId()).orElse(null);
             body.setImprovementEvent(event);
+        }
+        // Ensure default progress and status on creation
+        if (body.getProgress() == null) {
+            body.setProgress(0);
+        }
+        if (body.getStatus() == null || body.getStatus().trim().isEmpty()) {
+            body.setStatus("PENDING");
         }
         Improvements created = repository.save(body);
         return ResponseEntity.created(URI.create("/api/improvements/" + created.getImprovementID())).body(created);
@@ -116,9 +130,35 @@ public class ImprovementsController {
             }
             if (incoming.getNote() != null) existed.setNote(incoming.getNote());
             if (incoming.getFiles() != null) existed.setFiles(incoming.getFiles());
-            if (incoming.getStatus() != null) existed.setStatus(incoming.getStatus());
-            if (incoming.getProgress() != null) existed.setProgress(incoming.getProgress());
-            if (incoming.getProgressDetail() != null) existed.setProgressDetail(incoming.getProgressDetail());
+            
+            // Track status change for completion email
+            String oldStatus = existed.getStatus();
+            boolean wasNotDone = oldStatus == null || (!oldStatus.equals("DONE") && !oldStatus.equals("COMPLETED"));
+            boolean wasDone = oldStatus != null && (oldStatus.equals("DONE") || oldStatus.equals("COMPLETED"));
+            
+            if (incoming.getStatus() != null) {
+                existed.setStatus(incoming.getStatus());
+            }
+            
+            // Set completedAt when status becomes DONE or COMPLETED
+            // Xóa completedAt khi status chuyển từ DONE/COMPLETED về status khác
+            String newStatus = existed.getStatus();
+            if (newStatus != null && (newStatus.equals("DONE") || newStatus.equals("COMPLETED"))) {
+                // Status là DONE hoặc COMPLETED
+                if (existed.getCompletedAt() == null || (incoming.getCompletedAt() != null)) {
+                    if (incoming.getCompletedAt() != null) {
+                        existed.setCompletedAt(incoming.getCompletedAt());
+                    } else if (existed.getCompletedAt() == null) {
+                        existed.setCompletedAt(timeService.nowVietnam());
+                    }
+                }
+            } else {
+                // Status không phải DONE hoặc COMPLETED - xóa completedAt nếu trước đó đã DONE
+                if (wasDone) {
+                    existed.setCompletedAt(null);
+                }
+            }
+            
             if (incoming.getLastEditedBy() != null) existed.setLastEditedBy(incoming.getLastEditedBy());
 
             // Map improvement event if provided in payload as nested object { improvementEvent: { id } }
@@ -134,6 +174,16 @@ public class ImprovementsController {
 
             existed.setLastEditedAt(timeService.nowVietnam());
             Improvements saved = repository.save(existed);
+            
+            // Gửi mail thông báo hoàn thành nếu status chuyển từ không phải DONE/COMPLETED sang DONE/COMPLETED
+            if (wasNotDone && newStatus != null && (newStatus.equals("DONE") || newStatus.equals("COMPLETED"))) {
+                try {
+                    mailImprovementDoneService.queueImprovementDoneMail(saved);
+                } catch (Exception e) {
+                    System.err.println("Failed to queue improvement done mail for improvement " + saved.getImprovementID() + ": " + e.getMessage());
+                }
+            }
+            
             return ResponseEntity.ok(saved);
         }).orElse(ResponseEntity.notFound().build());
     }

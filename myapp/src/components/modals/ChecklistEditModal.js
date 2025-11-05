@@ -5,6 +5,7 @@ import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
 import { useSelector } from "react-redux";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -12,11 +13,74 @@ dayjs.extend(timezone);
 export default function ChecklistEditModal({ open, record, onCancel, onSaved }) {
   const [form] = Form.useForm();
   const { nguoiDung } = useSelector(state => state.user);
+  const { lang } = useLanguage();
   const [groupOptions, setGroupOptions] = React.useState([]);
   const [userOptions, setUserOptions] = React.useState([]);
   const [timeRepeatOptions, setTimeRepeatOptions] = React.useState([]);
   const [sopOptions, setSopOptions] = React.useState([]);
   const [selectedSopPath, setSelectedSopPath] = React.useState([]);
+
+  const labels = {
+    vi: {
+      title: "Sửa công việc",
+      save: "Lưu",
+      cancel: "Hủy",
+      taskName: "Tên công việc",
+      taskNamePlaceholder: "Nhập tên công việc...",
+      taskNameRequired: "Vui lòng nhập tên công việc",
+      workContent: "Nội dung công việc",
+      workContentPlaceholder: "Nhập nội dung chi tiết công việc...",
+      sops: "Tài liệu SOPs",
+      sopsPlaceholder: "Chọn tài liệu SOPs",
+      startAt: "Thời gian bắt đầu",
+      repeatTime: "Thời gian lặp lại",
+      repeatTimePlaceholder: "Chọn thời gian lặp lại",
+      dueTime: "Thời gian cần hoàn thành",
+      dueTimePlaceholder: "Chọn thời gian cần hoàn thành",
+      implementers: "Người thực hiện",
+      implementersPlaceholder: "Chọn nhóm hoặc tài khoản",
+      groupsOpt: "— Nhóm —",
+      usersOpt: "— Tài khoản —",
+      status: "Trạng thái",
+      statusPlaceholder: "Chọn trạng thái",
+      active: "Hoạt động",
+      inactive: "Không hoạt động",
+      unitMap: { day: "ngày", week: "tuần", month: "tháng", year: "năm" },
+      system: "Hệ thống",
+      updateSuccess: "Cập nhật công việc thành công",
+      updateFail: "Cập nhật công việc thất bại",
+    },
+    zh: {
+      title: "编辑任务",
+      save: "保存",
+      cancel: "取消",
+      taskName: "任务名称",
+      taskNamePlaceholder: "请输入任务名称...",
+      taskNameRequired: "请输入任务名称",
+      workContent: "工作内容",
+      workContentPlaceholder: "请输入任务详细内容...",
+      sops: "SOP 文档",
+      sopsPlaceholder: "选择 SOP 文档",
+      startAt: "开始时间",
+      repeatTime: "重复时间",
+      repeatTimePlaceholder: "选择重复时间",
+      dueTime: "完成时限",
+      dueTimePlaceholder: "选择完成时限",
+      implementers: "执行人",
+      implementersPlaceholder: "选择组或账户",
+      groupsOpt: "— 组 —",
+      usersOpt: "— 账户 —",
+      status: "状态",
+      statusPlaceholder: "选择状态",
+      active: "启用中",
+      inactive: "未启用",
+      unitMap: { day: "天", week: "周", month: "月", year: "年" },
+      system: "系统",
+      updateSuccess: "更新任务成功",
+      updateFail: "更新任务失败",
+    },
+  };
+  const t = labels[lang] || labels.vi;
 
   useEffect(() => {
     const fetchOptions = async () => {
@@ -45,7 +109,7 @@ export default function ChecklistEditModal({ open, record, onCancel, onSaved }) 
 
   const repeatCascaderOptions = useMemo(() => {
     if (!Array.isArray(timeRepeatOptions) || timeRepeatOptions.length === 0) return [];
-    const unitToLabel = { day: "ngày", week: "tuần", month: "tháng", year: "năm" };
+    const unitToLabel = t.unitMap;
     const groups = timeRepeatOptions.reduce((acc, r) => {
       const key = r.unit;
       if (!acc[key]) acc[key] = [];
@@ -78,18 +142,12 @@ export default function ChecklistEditModal({ open, record, onCancel, onSaved }) 
   };
 
   const dueInDaysWatch = Form.useWatch("dueInDays", form);
-  const remindInDaysWatch = Form.useWatch("remindInDays", form);
   const dueCascaderValue = useMemo(() => {
     if (!dueInDaysWatch) return [];
     const matched = (timeRepeatOptions || []).find((r) => convertToDays(r.unit, r.number) === Number(dueInDaysWatch));
     return matched ? [matched.unit, matched.id] : [];
   }, [dueInDaysWatch, timeRepeatOptions]);
 
-  const remindCascaderValue = useMemo(() => {
-    if (!remindInDaysWatch) return [];
-    const matched = (timeRepeatOptions || []).find((r) => convertToDays(r.unit, r.number) === Number(remindInDaysWatch));
-    return matched ? [matched.unit, matched.id] : [];
-  }, [remindInDaysWatch, timeRepeatOptions]);
 
   const loadSopDocuments = async (selectedOptions) => {
     const target = selectedOptions[selectedOptions.length - 1];
@@ -122,7 +180,6 @@ export default function ChecklistEditModal({ open, record, onCancel, onSaved }) 
           startAt: record.startAt ? dayjs(record.startAt) : null,
           repeatId: record.repeatId,
           dueInDays: record.dueInDays,
-          remindInDays: record.remindInDays,
           sopDocumentId: docId,
           status: record.status || 'ACTIVE',
         });
@@ -175,75 +232,74 @@ export default function ChecklistEditModal({ open, record, onCancel, onSaved }) 
     try {
       const values = await form.validateFields();
       const resolvedRepeatId = values.repeatId ? Number(values.repeatId) : null;
-
-      await axios.patch(`/api/checklists/${encodeURIComponent(String(record.id))}`, {
+      const payload = {
         taskName: values.taskName,
         workContent: values.workContent,
         implementers: values.implementers || [],
-        startAt: values.startAt ? values.startAt.tz('Asia/Ho_Chi_Minh').format('YYYY-MM-DDTHH:mm:ss') : null,
         repeatId: resolvedRepeatId,
         dueInDays: values.dueInDays,
-        remindInDays: values.remindInDays,
         sopDocumentId: values.sopDocumentId ? Number(values.sopDocumentId) : null,
         lastEditedBy: nguoiDung?.userID,
         status: values.status || 'ACTIVE',
-      });
+      };
+      // Only send startAt if user changed it; server rejects past times
+      if (values.startAt) {
+        const newStartIso = values.startAt.tz('Asia/Ho_Chi_Minh').format('YYYY-MM-DDTHH:mm:ss');
+        const oldIso = record?.startAt ? dayjs(record.startAt).format('YYYY-MM-DDTHH:mm:ss') : null;
+        if (!oldIso || newStartIso !== oldIso) {
+          payload.startAt = newStartIso;
+        }
+      }
+
+      await axios.patch(`/api/checklists/${encodeURIComponent(String(record.id))}`, payload);
       notification.success({
-        message: "Hệ thống",
-        description: "Cập nhật công việc thành công",
+        message: t.system,
+        description: t.updateSuccess,
         placement: "bottomRight",
         duration: 3,
       });      
       onSaved?.();
       onCancel?.();
     } catch (e) {
-      if (e?.response?.status === 400) {
-        notification.error({
-          message: "Lỗi",
-          description: "Thời gian bắt đầu phải lớn hơn thời gian hiện tại",
-          placement: "bottomRight",
-          duration: 3,
-        });
-      } else {
-        notification.error({
-          message: "Hệ thống",
-          description: "Cập nhật công việc thất bại",
-          placement: "bottomRight",
-          duration: 3,
-        });
-      }
+      notification.error({
+        message: t.system,
+        description: t.updateFail,
+        placement: "bottomRight",
+        duration: 3,
+      });
     }
   };
 
   return (
     <Modal
-      title="Sửa công việc"
+      title={t.title}
       open={open}
       onCancel={onCancel}
       onOk={handleOk}
-      okText="Lưu"
-      cancelText="Hủy"
+      okText={t.save}
+      cancelText={t.cancel}
     >
       <Form form={form} layout="vertical">
-        <Form.Item name="taskName" label="Tên công việc" rules={[{ required: true, message: "Vui lòng nhập tên công việc" }]}>
-          <Input placeholder="Nhập tên công việc..." />
+        <Form.Item name="taskName" label={t.taskName} rules={[{ required: true, message: t.taskNameRequired }]}>
+          <Input placeholder={t.taskNamePlaceholder} />
         </Form.Item>
 
-        <Form.Item name="workContent" label="Nội dung công việc">
+        <Form.Item name="workContent" label={t.workContent}>
           <Input.TextArea 
-            placeholder="Nhập nội dung chi tiết công việc..." 
+            placeholder={t.workContentPlaceholder} 
             rows={4}
             showCount
             maxLength={2000}
           />
         </Form.Item>
 
-        <Form.Item label="Tài liệu SOPs">
+        <Form.Item label={t.sops}>
           <Cascader
-            placeholder="Chọn tài liệu SOPs"
+            placeholder={t.sopsPlaceholder}
             options={sopOptions}
             loadData={loadSopDocuments}
-            value={selectedSopPath}
+            key={Array.isArray(selectedSopPath) ? selectedSopPath.join('-') : 'none'}
+            defaultValue={selectedSopPath}
             displayRender={(labels, selectedOptions) => {
               if (selectedOptions && selectedOptions.length === 2) {
                 return selectedOptions[1]?.label ?? labels[labels.length - 1];
@@ -253,7 +309,6 @@ export default function ChecklistEditModal({ open, record, onCancel, onSaved }) 
             onChange={(path) => {
               const docId = Array.isArray(path) && path.length === 2 ? path[1] : null;
               form.setFieldsValue({ sopDocumentId: docId || null });
-              setSelectedSopPath(Array.isArray(path) ? path : []);
             }}
             changeOnSelect={false}
             allowClear
@@ -264,41 +319,27 @@ export default function ChecklistEditModal({ open, record, onCancel, onSaved }) 
           <InputNumber style={{ display: 'none' }} />
         </Form.Item>
 
-        {/* Row 1: Thời gian bắt đầu và Thời gian lặp lại */}
+        {/* Row 1: startAt + repeat */}
         <div style={{ display: 'flex', gap: '16px' }}>
           <div style={{ flex: 1 }}>
             <Form.Item 
               name="startAt" 
-              label="Thời gian bắt đầu"
-              rules={[
-                {
-                  validator: (_, value) => {
-                    if (!value) {
-                      return Promise.resolve();
-                    }
-                    const now = dayjs();
-                    if (value.isBefore(now)) {
-                      return Promise.reject(new Error('Thời gian bắt đầu phải lớn hơn thời gian hiện tại'));
-                    }
-                    return Promise.resolve();
-                  }
-                }
-              ]}
+              label={t.startAt}
             >
               <DatePicker showTime style={{ width: '100%' }} format="DD/MM/YYYY HH:mm" />
             </Form.Item>
           </div>
           <div style={{ flex: 1 }}>
-            <Form.Item label="Thời gian lặp lại">
+            <Form.Item label={t.repeatTime}>
               <Cascader
-                placeholder="Chọn thời gian lặp lại"
+                placeholder={t.repeatTimePlaceholder}
                 options={repeatCascaderOptions}
                 value={repeatCascaderValue}
                 displayRender={(labels, selectedOptions) => {
                   if (!selectedOptions || selectedOptions.length !== 2) return labels.join(" / ");
                   const unit = selectedOptions[0]?.value;
                   const numberLabel = selectedOptions[1]?.label;
-                  const unitLabel = { day: "ngày", week: "tuần", month: "tháng", year: "năm" }[unit] || unit;
+                  const unitLabel = t.unitMap[unit] || unit;
                   return `${numberLabel} ${unitLabel}`;
                 }}
                 onChange={(path) => {
@@ -316,19 +357,19 @@ export default function ChecklistEditModal({ open, record, onCancel, onSaved }) 
           </div>
         </div>
 
-        {/* Row 2: Thời gian cần hoàn thành và Ngày nhắc nhở */}
+        {/* Row 2: due time */}
         <div style={{ display: 'flex', gap: '16px' }}>
           <div style={{ flex: 1 }}>
-            <Form.Item label="Thời gian cần hoàn thành">
+            <Form.Item label={t.dueTime}>
               <Cascader
-                placeholder="Chọn thời gian cần hoàn thành"
+                placeholder={t.dueTimePlaceholder}
                 options={repeatCascaderOptions}
                 value={dueCascaderValue}
                 displayRender={(labels, selectedOptions) => {
                   if (!selectedOptions || selectedOptions.length !== 2) return labels.join(" / ");
                   const unit = selectedOptions[0]?.value;
                   const numberLabel = selectedOptions[1]?.label;
-                  const unitLabel = { day: "ngày", week: "tuần", month: "tháng", year: "năm" }[unit] || unit;
+                  const unitLabel = t.unitMap[unit] || unit;
                   return `${numberLabel} ${unitLabel}`;
                 }}
                 onChange={(path) => {
@@ -348,47 +389,17 @@ export default function ChecklistEditModal({ open, record, onCancel, onSaved }) 
               <InputNumber style={{ display: 'none' }} />
             </Form.Item>
           </div>
-          <div style={{ flex: 1 }}>
-            <Form.Item label="Ngày nhắc nhở">
-              <Cascader
-                placeholder="Chọn thời gian nhắc nhở"
-                options={repeatCascaderOptions}
-                value={remindCascaderValue}
-                displayRender={(labels, selectedOptions) => {
-                  if (!selectedOptions || selectedOptions.length !== 2) return labels.join(" / ");
-                  const unit = selectedOptions[0]?.value;
-                  const numberLabel = selectedOptions[1]?.label;
-                  const unitLabel = { day: "ngày", week: "tuần", month: "tháng", year: "năm" }[unit] || unit;
-                  return `${numberLabel} ${unitLabel}`;
-                }}
-                onChange={(path) => {
-                  if (Array.isArray(path) && path.length === 2) {
-                    const selected = (timeRepeatOptions || []).find((r) => r.id === path[1]);
-                    const days = selected ? convertToDays(selected.unit, selected.number) : null;
-                    form.setFieldsValue({ remindInDays: days });
-                  } else {
-                    form.setFieldsValue({ remindInDays: null });
-                  }
-                }}
-                allowClear
-                style={{ width: '100%' }}
-              />
-            </Form.Item>
-            <Form.Item name="remindInDays" noStyle>
-              <InputNumber style={{ display: 'none' }} />
-            </Form.Item>
-          </div>
         </div>
 
-        {/* Row 3: Người thực hiện và Trạng thái */}
+        {/* Row 3: implementers + status */}
         <div style={{ display: 'flex', gap: '16px' }}>
           <div style={{ flex: 1 }}>
-            <Form.Item name="implementers" label="Người thực hiện">
+            <Form.Item name="implementers" label={t.implementers}>
               <Select
-                placeholder="Chọn nhóm hoặc tài khoản"
+                placeholder={t.implementersPlaceholder}
                 options={[
-                  { label: "— Nhóm —", options: groupOptions },
-                  { label: "— Tài khoản —", options: userOptions },
+                  { label: t.groupsOpt, options: groupOptions },
+                  { label: t.usersOpt, options: userOptions },
                 ]}
                 showSearch
                 optionFilterProp="label"
@@ -398,12 +409,12 @@ export default function ChecklistEditModal({ open, record, onCancel, onSaved }) 
             </Form.Item>
           </div>
           <div style={{ flex: 1 }}>
-            <Form.Item name="status" label="Trạng thái">
+            <Form.Item name="status" label={t.status}>
               <Select
-                placeholder="Chọn trạng thái"
+                placeholder={t.statusPlaceholder}
                 options={[
-                  { value: 'ACTIVE', label: 'Hoạt động' },
-                  { value: 'INACTIVE', label: 'Không hoạt động' },
+                  { value: 'ACTIVE', label: t.active },
+                  { value: 'INACTIVE', label: t.inactive },
                 ]}
               />
             </Form.Item>

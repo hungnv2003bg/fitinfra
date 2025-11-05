@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import axios from "../../plugins/axios";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { formatDateShortVN } from "../../utils/dateUtils";
 
 export default function ChecklistViewModal({ open, record, onCancel }) {
   const { nguoiDung } = useSelector(state => state.user);
@@ -236,12 +237,12 @@ export default function ChecklistViewModal({ open, record, onCancel }) {
           {record.workContent || '-'}
         </Descriptions.Item>
         <Descriptions.Item label={t.creator}>{getUserDisplayName(record.creator)}</Descriptions.Item>
-        <Descriptions.Item label={t.createdAt}>{record.createdAt ? new Date(record.createdAt).toLocaleString() : '-'}</Descriptions.Item>
+        <Descriptions.Item label={t.createdAt}>{record.createdAt ? formatDateShortVN(record.createdAt) : '-'}</Descriptions.Item>
         <Descriptions.Item label={t.implementers}>
           {getImplementersDisplay(record.implementers)}
         </Descriptions.Item>
         <Descriptions.Item label={t.startAt}>
-          {record.startAt ? new Date(record.startAt).toLocaleString() : '-'}
+          {record.startAt ? formatDateShortVN(record.startAt) : '-'}
         </Descriptions.Item>
         <Descriptions.Item label={t.repeat}>
           {getRepeatDisplay(record.repeatId)}
@@ -255,7 +256,7 @@ export default function ChecklistViewModal({ open, record, onCancel }) {
         <Descriptions.Item label={t.lastEditedBy}>
           {getUserDisplayName(record.lastEditedBy)}
         </Descriptions.Item>
-        <Descriptions.Item label={t.lastEditedAt}>{record.lastEditedAt ? new Date(record.lastEditedAt).toLocaleString() : '-'}</Descriptions.Item>
+        <Descriptions.Item label={t.lastEditedAt}>{record.lastEditedAt ? formatDateShortVN(record.lastEditedAt) : '-'}</Descriptions.Item>
       </Descriptions>
     </Modal>
   );

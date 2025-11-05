@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Table, Spin, message, Button, Tag, Popconfirm, Input, Select, Space, Popover, Modal } from "antd";
+import { Table, Spin, message, Button, Tag, Popconfirm, Input, Select, Space, Popover, Modal, notification } from "antd";
 import { DeleteOutlined, SearchOutlined, EditOutlined, FileTextOutlined, EyeOutlined, LockOutlined } from "@ant-design/icons";
 import axios from "../plugins/axios";
 import SOPDetailModal from "./modals/SOPDetailModal";
@@ -27,7 +27,8 @@ export default function SOPTable({ refreshSignal, category, onAddNew, addNewText
   const [permissionRecord, setPermissionRecord] = useState(null);
   const [openGlobalPerm, setOpenGlobalPerm] = useState(false);
   const [searchText, setSearchText] = useState("");
-  const [creatorFilter, setCreatorFilter] = useState(undefined);
+  
+  const [sortOrder, setSortOrder] = useState(undefined); // "oldest", "newest" hoặc undefined
   const [userPermissions, setUserPermissions] = useState({});
   const [pagination, setPagination] = useState({
     current: 1,
@@ -40,7 +41,7 @@ export default function SOPTable({ refreshSignal, category, onAddNew, addNewText
 
   const hasPermissionAccess = () => {
     if (!quyenList || quyenList.length === 0) return false;
-    // Chỉ coi ADMIN là có toàn quyền bỏ qua phân quyền chi tiết
+   
     return quyenList.some(role => 
       role === "ADMIN" || role === "ROLE_ADMIN"
     );
@@ -63,36 +64,41 @@ export default function SOPTable({ refreshSignal, category, onAddNew, addNewText
 
   const fetchUserPermissions = useCallback(async () => {
     try {
-      // Luôn lấy quyền toàn cục
-      const globalRes = await axios.get('/api/sops/global/permissions/my');
-      const globalPerm = globalRes?.data || { view: false, edit: false, delete: false, create: false };
-
       if (category) {
-        // Khi ở trang tài liệu của một SOP: gộp quyền toàn cục với quyền theo SOP
-        const docRes = await axios.get(`/api/sops/${category}/permissions/my`).catch(() => ({ data: {} }));
-        const docPerm = docRes?.data || {};
-        setUserPermissions({
-          view: !!(globalPerm.view || docPerm.view),
-          edit: !!(globalPerm.edit || docPerm.edit),
-          delete: !!(globalPerm.delete || docPerm.delete),
-          create: !!(globalPerm.create || docPerm.create),
-        });
+        
+        const docRes = await axios.get(`/api/sops/${category}/permissions/my`).catch(() => ({ data: { view: false, edit: false, delete: false, create: false } }));
+        const docPerm = docRes?.data || { view: false, edit: false, delete: false, create: false };
+        setUserPermissions(docPerm);
       } else {
-        // Màn hình danh sách SOP: dùng quyền toàn cục
+     
+        const globalRes = await axios.get('/api/sops/global/permissions/my').catch(() => ({ data: { view: false, edit: false, delete: false, create: false } }));
+        const globalPerm = globalRes?.data || { view: false, edit: false, delete: false, create: false };
         setUserPermissions(globalPerm);
       }
     } catch (err) {
+      console.error('Error fetching user permissions:', err);
       setUserPermissions({ view: false, edit: false, delete: false, create: false });
     }
   }, [category]);
 
   useEffect(() => {
     fetchUserPermissions();
-  }, [category]);
+  }, [category, fetchUserPermissions]);
 
   const openGlobalPermissionModal = () => {
     setOpenGlobalPerm(true);
   };
+
+  const handlePermissionSaved = useCallback(() => {
+    fetchData();
+    fetchUserPermissions(); 
+  }, []);
+
+  const handleGlobalPermissionSaved = useCallback(() => {
+    fetchData();
+    fetchUserPermissions(); 
+    setOpenGlobalPerm(false); 
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -125,7 +131,7 @@ export default function SOPTable({ refreshSignal, category, onAddNew, addNewText
     if (category) {
       return userPermissions.create === true;
     } else {
-      // Màn hình danh sách SOP: quyền tạo dựa trên quyền toàn cục
+     
       return userPermissions.create === true;
     }
   };
@@ -135,8 +141,8 @@ export default function SOPTable({ refreshSignal, category, onAddNew, addNewText
     if (category) {
       return userPermissions.edit === true;
     } else {
-      // Danh sách SOP: cho phép nếu có quyền toàn cục hoặc quyền theo SOP
-      return userPermissions.edit === true || record.userCanEdit === true;
+      // Danh sách SOP: CHỈ dùng quyền toàn cục, không dùng quyền theo SOP
+      return userPermissions.edit === true;
     }
   };
 
@@ -145,15 +151,16 @@ export default function SOPTable({ refreshSignal, category, onAddNew, addNewText
     if (category) {
       return userPermissions.delete === true;
     } else {
-      // Danh sách SOP: cho phép nếu có quyền toàn cục hoặc quyền theo SOP
-      return userPermissions.delete === true || record.userCanDelete === true;
+      // Danh sách SOP: CHỈ dùng quyền toàn cục, không dùng quyền theo SOP
+      return userPermissions.delete === true;
     }
   };
 
   const handleCreateClick = () => {
     if (!canCreate()) {
-      message.error({
-        content: lang === 'vi' ? 'Bạn không có quyền tạo mới!' : 'You do not have permission to create!',
+      notification.error({
+        message: lang === 'zh' ? '系统' : 'Hệ thống',
+        description: lang === 'vi' ? 'Bạn không có quyền tạo mới!' : 'You do not have permission to create!',
         placement: 'bottomRight'
       });
       return;
@@ -163,8 +170,9 @@ export default function SOPTable({ refreshSignal, category, onAddNew, addNewText
 
   const handleEditClick = (record) => {
     if (!canEdit(record)) {
-      message.error({
-        content: lang === 'vi' ? 'Bạn không có quyền chỉnh sửa!' : 'You do not have permission to edit!',
+      notification.error({
+        message: lang === 'zh' ? '系统' : 'Hệ thống',
+        description: lang === 'vi' ? 'Bạn không có quyền chỉnh sửa!' : 'You do not have permission to edit!',
         placement: 'bottomRight'
       });
       return;
@@ -178,8 +186,9 @@ export default function SOPTable({ refreshSignal, category, onAddNew, addNewText
 
   const handleDeleteClick = (record) => {
     if (!canDelete(record)) {
-      message.error({
-        content: lang === 'vi' ? 'Bạn không có quyền xóa!' : 'You do not have permission to delete!',
+      notification.error({
+        message: lang === 'zh' ? '系统' : 'Hệ thống',
+        description: lang === 'vi' ? 'Bạn không có quyền xóa!' : 'You do not have permission to delete!',
         placement: 'bottomRight'
       });
       return;
@@ -215,6 +224,37 @@ export default function SOPTable({ refreshSignal, category, onAddNew, addNewText
         } else {
           data = [];
         }
+        
+        // Sắp xếp theo cập nhật gần nhất, nếu không có thì theo ngày tạo
+        data.sort((a, b) => {
+          const aUpdateTime = a.lastUpdatedAt ? new Date(a.lastUpdatedAt) : null;
+          const bUpdateTime = b.lastUpdatedAt ? new Date(b.lastUpdatedAt) : null;
+          const aCreateTime = new Date(a.createdAt);
+          const bCreateTime = new Date(b.createdAt);
+          
+          let comparison = 0;
+          
+          // Nếu cả hai đều có cập nhật, sắp xếp theo cập nhật
+          if (aUpdateTime && bUpdateTime) {
+            comparison = aUpdateTime - bUpdateTime;
+          }
+          // Nếu chỉ a có cập nhật, a lên trên
+          else if (aUpdateTime && !bUpdateTime) {
+            comparison = -1;
+          }
+          // Nếu chỉ b có cập nhật, b lên trên
+          else if (!aUpdateTime && bUpdateTime) {
+            comparison = 1;
+          }
+          // Nếu cả hai đều không có cập nhật, sắp xếp theo ngày tạo
+          else {
+            comparison = aCreateTime - bCreateTime;
+          }
+          
+          // Áp dụng thứ tự sắp xếp được chọn
+          return sortOrder === "newest" ? -comparison : comparison;
+        });
+        
         setSops(data);
         setFilteredSops(data);
         setPagination(prev => ({
@@ -233,6 +273,36 @@ export default function SOPTable({ refreshSignal, category, onAddNew, addNewText
         });
         const data = Array.isArray(res.data) ? res.data : (res.data && Array.isArray(res.data.content) ? res.data.content : []);
         
+        // Sắp xếp theo cập nhật gần nhất, nếu không có thì theo ngày tạo
+        data.sort((a, b) => {
+          const aUpdateTime = a.lastUpdatedAt ? new Date(a.lastUpdatedAt) : null;
+          const bUpdateTime = b.lastUpdatedAt ? new Date(b.lastUpdatedAt) : null;
+          const aCreateTime = new Date(a.createdAt);
+          const bCreateTime = new Date(b.createdAt);
+          
+          let comparison = 0;
+          
+          // Nếu cả hai đều có cập nhật, sắp xếp theo cập nhật
+          if (aUpdateTime && bUpdateTime) {
+            comparison = aUpdateTime - bUpdateTime;
+          }
+          // Nếu chỉ a có cập nhật, a lên trên
+          else if (aUpdateTime && !bUpdateTime) {
+            comparison = -1;
+          }
+          // Nếu chỉ b có cập nhật, b lên trên
+          else if (!aUpdateTime && bUpdateTime) {
+            comparison = 1;
+          }
+          // Nếu cả hai đều không có cập nhật, sắp xếp theo ngày tạo
+          else {
+            comparison = aCreateTime - bCreateTime;
+          }
+          
+          // Áp dụng thứ tự sắp xếp được chọn
+          return sortOrder === "newest" ? -comparison : comparison;
+        });
+        
         // Tin tưởng vào kết quả đã được backend lọc theo visibleOnly (đã bao gồm quyền toàn cục)
         const dataWithPerm = data;
         setSops(dataWithPerm);
@@ -243,10 +313,7 @@ export default function SOPTable({ refreshSignal, category, onAddNew, addNewText
         }));
       }
     } catch (err) {
-      message.error({
-        content: "Không thể tải danh sách SOP. Vui lòng thử lại!",
-        placement: 'bottomRight'
-      });
+      notification.error({ message: lang === 'zh' ? '系统' : 'Hệ thống', description: "Không thể tải danh sách SOP. Vui lòng thử lại!", placement: 'bottomRight' });
       setSops([]);
       setFilteredSops([]);
     } finally {
@@ -285,15 +352,17 @@ export default function SOPTable({ refreshSignal, category, onAddNew, addNewText
         const response = await axios.delete(`/api/sop-documents/${encodeURIComponent(String(id))}`);
         const data = response.data;
         if (data.deletedFiles > 0) {
-          message.success({
-            content: lang === 'zh' 
+          notification.success({
+            message: lang === 'zh' ? '系统' : 'Hệ thống',
+            description: lang === 'zh' 
               ? `删除文档成功（已删除 ${data.deletedFiles} 个文件）` 
               : `Xóa tài liệu thành công (${data.deletedFiles} file đã xóa)`,
             placement: 'bottomRight'
           });
         } else {
-          message.success({
-            content: lang === 'zh' ? '删除文档成功' : 'Xóa tài liệu thành công',
+          notification.success({
+            message: lang === 'zh' ? '系统' : 'Hệ thống',
+            description: lang === 'zh' ? '删除文档成功' : 'Xóa tài liệu thành công',
             placement: 'bottomRight'
           });
         }
@@ -303,8 +372,9 @@ export default function SOPTable({ refreshSignal, category, onAddNew, addNewText
           const docsRes = await axios.get(`/api/sops/${encodeURIComponent(String(id))}/documents`, { params: { _t: Date.now() } });
           const docs = Array.isArray(docsRes.data) ? docsRes.data : [];
           if (docs.length > 0) {
-            message.warning({
-              content: lang === 'zh' ? '请先删除 SOPs 详情' : 'Vui lòng xóa SOPs chi tiết trước',
+            notification.error({
+              message: lang === 'zh' ? '系统' : 'Hệ thống',
+              description: lang === 'zh' ? '请先删除 SOPs 详情' : 'Vui lòng xóa SOPs chi tiết trước',
               placement: 'bottomRight'
             });
             return; // stop deletion
@@ -315,15 +385,17 @@ export default function SOPTable({ refreshSignal, category, onAddNew, addNewText
         const response = await axios.delete(`/api/sops/${encodeURIComponent(String(id))}`);
         const data = response.data;
         if (data.deletedDocuments > 0 || data.deletedFiles > 0) {
-          message.success({
-            content: lang === 'zh' 
+          notification.success({
+            message: lang === 'zh' ? '系统' : 'Hệ thống',
+            description: lang === 'zh' 
               ? `删除 SOP 成功（删除文档 ${data.deletedDocuments} 个，文件 ${data.deletedFiles} 个）` 
               : `Xóa SOP thành công (${data.deletedDocuments} tài liệu, ${data.deletedFiles} file đã xóa)`,
             placement: 'bottomRight'
           });
         } else {
-          message.success({
-            content: lang === 'zh' ? '删除 SOP 成功' : 'Xóa SOP thành công',
+          notification.success({
+            message: lang === 'zh' ? '系统' : 'Hệ thống',
+            description: lang === 'zh' ? '删除 SOP 成功' : 'Xóa SOP thành công',
             placement: 'bottomRight'
           });
         }
@@ -334,6 +406,10 @@ export default function SOPTable({ refreshSignal, category, onAddNew, addNewText
     } catch (err) {
       const errorData = err.response?.data;
       let errorMsg = errorData?.error || "Không thể xóa. Vui lòng thử lại!";
+      
+      // Check if this is a business rule error (not a system error)
+      const isBusinessRuleError = errorMsg.includes('Vui lòng xóa file trước khi xóa');
+      
       if (lang === 'zh') {
         const vi = (errorMsg || '').toString();
         if (vi.includes('Vui lòng xóa file trước khi xóa')) {
@@ -343,10 +419,12 @@ export default function SOPTable({ refreshSignal, category, onAddNew, addNewText
         }
       }
 
-      message.error({
-        content: errorMsg,
-        placement: 'bottomRight'
-      });
+      // Show error color for both business rule and system errors
+      if (isBusinessRuleError) {
+        notification.error({ message: lang === 'zh' ? '系统' : 'Hệ thống', description: errorMsg, placement: 'bottomRight' });
+      } else {
+        notification.error({ message: lang === 'zh' ? '系统' : 'Hệ thống', description: errorMsg, placement: 'bottomRight' });
+      }
     } finally {
       setLoading(false);
     }
@@ -356,6 +434,43 @@ export default function SOPTable({ refreshSignal, category, onAddNew, addNewText
   useEffect(() => {
     fetchData();
   }, [fetchData, refreshSignal]);
+
+  // Trigger re-sorting when sortOrder changes
+  useEffect(() => {
+    if (sops.length > 0 && sortOrder !== undefined) {
+      const sorted = [...sops].sort((a, b) => {
+        const aUpdateTime = a.lastUpdatedAt ? new Date(a.lastUpdatedAt) : null;
+        const bUpdateTime = b.lastUpdatedAt ? new Date(b.lastUpdatedAt) : null;
+        const aCreateTime = new Date(a.createdAt);
+        const bCreateTime = new Date(b.createdAt);
+        
+        let comparison = 0;
+        
+        // Nếu cả hai đều có cập nhật, sắp xếp theo cập nhật
+        if (aUpdateTime && bUpdateTime) {
+          comparison = aUpdateTime - bUpdateTime;
+        }
+        // Nếu chỉ a có cập nhật, a lên trên
+        else if (aUpdateTime && !bUpdateTime) {
+          comparison = -1;
+        }
+        // Nếu chỉ b có cập nhật, b lên trên
+        else if (!aUpdateTime && bUpdateTime) {
+          comparison = 1;
+        }
+        // Nếu cả hai đều không có cập nhật, sắp xếp theo ngày tạo
+        else {
+          comparison = aCreateTime - bCreateTime;
+        }
+        
+        // Áp dụng thứ tự sắp xếp được chọn
+        return sortOrder === "newest" ? -comparison : comparison;
+      });
+      
+      setSops(sorted);
+      setFilteredSops(sorted);
+    }
+  }, [sortOrder]);
 
   // When a document id is provided, filter table to just that document and highlight it
   useEffect(() => {
@@ -385,33 +500,47 @@ export default function SOPTable({ refreshSignal, category, onAddNew, addNewText
         });
       }
 
-      if (creatorFilter) {
-        filtered = filtered.filter(item => {
-          if (typeof item.createdBy === 'string') {
-            return item.createdBy === creatorFilter;
-          } else if (typeof item.createdBy === 'object' && item.createdBy) {
-            return item.createdBy.fullName === creatorFilter || item.createdBy.manv === creatorFilter;
-          }
-          return false;
-        });
-      }
+      
     }
+
+    // Sắp xếp kết quả filter theo cập nhật gần nhất, nếu không có thì theo ngày tạo (cũ nhất lên trên)
+    filtered.sort((a, b) => {
+      const aUpdateTime = a.lastUpdatedAt ? new Date(a.lastUpdatedAt) : null;
+      const bUpdateTime = b.lastUpdatedAt ? new Date(b.lastUpdatedAt) : null;
+      const aCreateTime = new Date(a.createdAt);
+      const bCreateTime = new Date(b.createdAt);
+      
+      let comparison = 0;
+      
+      // Nếu cả hai đều có cập nhật, sắp xếp theo cập nhật
+      if (aUpdateTime && bUpdateTime) {
+        comparison = aUpdateTime - bUpdateTime;
+      }
+      // Nếu chỉ a có cập nhật, a lên trên
+      else if (aUpdateTime && !bUpdateTime) {
+        comparison = -1;
+      }
+      // Nếu chỉ b có cập nhật, b lên trên
+      else if (!aUpdateTime && bUpdateTime) {
+        comparison = 1;
+      }
+      // Nếu cả hai đều không có cập nhật, sắp xếp theo ngày tạo
+      else {
+        comparison = aCreateTime - bCreateTime;
+      }
+      
+      // Áp dụng thứ tự sắp xếp được chọn (mặc định là cũ nhất lên trên)
+      return sortOrder === "newest" ? -comparison : comparison;
+    });
 
     setFilteredSops(filtered);
     setPagination(prev => ({
       ...prev,
       total: filtered.length
     }));
-  }, [sops, searchText, creatorFilter, category, didFilterByParam, highlightDocId]);
+  }, [sops, searchText, category, didFilterByParam, highlightDocId]);
 
-  const uniqueCreators = [...new Set(sops.map(item => {
-    if (typeof item.createdBy === 'string') {
-      return item.createdBy;
-    } else if (typeof item.createdBy === 'object' && item.createdBy) {
-      return item.createdBy.fullName || item.createdBy.manv;
-    }
-    return null;
-  }).filter(Boolean))];
+  
   const labels = {
     vi: {
       stt: "STT",
@@ -476,7 +605,7 @@ export default function SOPTable({ refreshSignal, category, onAddNew, addNewText
       key: "stt",
       render: (_, record, index) => (
         <Tag color={highlightDocId && Number(record.documentID) === Number(highlightDocId) ? 'red' : 'blue'}>
-          {index + 1}
+          {((pagination.current - 1) * pagination.pageSize) + index + 1}
         </Tag>
       ),
       width: 80,
@@ -617,21 +746,21 @@ export default function SOPTable({ refreshSignal, category, onAddNew, addNewText
               style={{ width: 250 }}
               allowClear
             />
+            
             <Select
-              placeholder={t.creatorFilter}
-              value={creatorFilter}
-              onChange={setCreatorFilter}
-              style={{ width: 200 }}
-              allowClear
+              placeholder={lang === 'vi' ? 'Sắp xếp' : '排序'}
+              value={sortOrder}
+              onChange={setSortOrder}
+              style={{ width: 180 }}
             >
-              {uniqueCreators.map(creator => (
-                <Select.Option key={creator} value={creator}>{creator}</Select.Option>
-              ))}
+               <Select.Option value="newest">{lang === 'vi' ? 'Mới nhất' : '最新'}</Select.Option>
+              <Select.Option value="oldest">{lang === 'vi' ? 'Cũ nhất' : '最旧'}</Select.Option>
+             
             </Select>
-            <Button onClick={() => { setSearchText(""); setCreatorFilter(undefined); setDidFilterByParam(false); setHighlightDocId(undefined); }}>{t.clearFilters}</Button>
+            <Button onClick={() => { setSearchText(""); setDidFilterByParam(false); setHighlightDocId(undefined); }}>{t.clearFilters}</Button>
           </Space>
           <Space>
-          {hasPermissionAccess() && (
+          {hasPermissionAccess() && !category && (
             <Button onClick={openGlobalPermissionModal} icon={<LockOutlined />}>{lang === 'vi' ? 'Phân quyền' : '权限'}</Button>
           )}
           {onAddNew && canCreate() && (
@@ -691,13 +820,13 @@ export default function SOPTable({ refreshSignal, category, onAddNew, addNewText
         open={!!permissionRecord}
         record={permissionRecord}
         onCancel={() => setPermissionRecord(null)}
-        onSaved={fetchData}
+        onSaved={handlePermissionSaved}
       />
       {openGlobalPerm && (
         <SOPGlobalPermissionModal
           open={openGlobalPerm}
           onCancel={() => setOpenGlobalPerm(false)}
-          onSaved={() => setOpenGlobalPerm(false)}
+          onSaved={handleGlobalPermissionSaved}
         />
       )}
     </div>

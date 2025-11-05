@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Table, Button, Modal, Form, Input, Tag, Space, message } from "antd";
+import { Table, Button, Modal, Form, Input, Tag, Space, message, notification } from "antd";
 import { TeamOutlined, PlusOutlined, EditOutlined, DeleteOutlined, UserAddOutlined } from "@ant-design/icons";
 import axios from "../plugins/axios";
 import { useLanguage } from "../contexts/LanguageContext";
@@ -7,6 +7,7 @@ import { useLanguage } from "../contexts/LanguageContext";
 function GroupPage() {
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingGroup, setEditingGroup] = useState(null);
   const [form] = Form.useForm();
@@ -101,8 +102,9 @@ function GroupPage() {
       onOk: async () => {
         try {
           await axios.delete(`/api/groups/${group.id}`);
-          message.success({
-            content: t.groupDeleted,
+          notification.success({
+            message: lang === 'vi' ? 'Hệ thống' : '系统',
+            description: t.groupDeleted,
             placement: 'bottomRight'
           });
           fetchGroups();
@@ -121,14 +123,16 @@ function GroupPage() {
     try {
       if (editingGroup) {
         await axios.put(`/api/groups/${editingGroup.id}`, { ...editingGroup, ...values });
-        message.success({
-          content: t.groupUpdated,
+        notification.success({
+          message: lang === 'vi' ? 'Hệ thống' : '系统',
+          description: t.groupUpdated,
           placement: 'bottomRight'
         });
       } else {
         await axios.post("/api/groups", values);
-        message.success({
-          content: t.groupCreated,
+        notification.success({
+          message: lang === 'vi' ? 'Hệ thống' : '系统',
+          description: t.groupCreated,
           placement: 'bottomRight'
         });
       }
@@ -136,8 +140,9 @@ function GroupPage() {
       fetchGroups();
     } catch (e) {
       if (e.response?.data?.error === "DUPLICATE_NAME") {
-        message.error({
-          content: `${t.groupName} "${e.response.data.duplicateValue}" ${t.duplicateGroupName}`,
+        notification.error({
+          message: lang === 'vi' ? 'Hệ thống' : '系统',
+          description: `${t.groupName} "${e.response.data.duplicateValue}" ${t.duplicateGroupName}`,
           placement: 'bottomRight'
         });
       } else {
@@ -154,7 +159,7 @@ function GroupPage() {
       title: <div style={{ textAlign: 'center' }}>{t.stt}</div>, 
       width: 60, 
       align: "center", 
-      render: (_, __, i) => i + 1 
+      render: (_, __, i) => ((pagination.current - 1) * pagination.pageSize) + i + 1 
     },
     { 
       title: <div style={{ textAlign: 'center' }}>{t.groupName}</div>, 
@@ -207,7 +212,14 @@ function GroupPage() {
         <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>{t.addGroup}</Button>
       </div>
 
-      <Table columns={columns} dataSource={groups} rowKey="id" loading={loading} pagination={{ pageSize: 10 }} />
+      <Table 
+        columns={columns} 
+        dataSource={groups} 
+        rowKey="id" 
+        loading={loading} 
+        pagination={{ current: pagination.current, pageSize: pagination.pageSize, showSizeChanger: true, showQuickJumper: true }}
+        onChange={(p) => setPagination({ current: p.current, pageSize: p.pageSize })}
+      />
 
       <Modal title={editingGroup ? t.editGroup : t.addGroup} open={isModalVisible} onOk={handleOk} onCancel={() => setIsModalVisible(false)}>
         <Form form={form} layout="vertical">

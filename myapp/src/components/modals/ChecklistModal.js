@@ -82,18 +82,11 @@ export default function ChecklistModal({ open, onCancel, onAdded }) {
   };
 
   const dueInDaysWatch = Form.useWatch("dueInDays", form);
-  const remindInDaysWatch = Form.useWatch("remindInDays", form);
   const dueCascaderValue = useMemo(() => {
     if (!dueInDaysWatch) return [];
     const matched = (timeRepeatOptions || []).find((r) => convertToDays(r.unit, r.number) === Number(dueInDaysWatch));
     return matched ? [matched.unit, matched.id] : [];
   }, [dueInDaysWatch, timeRepeatOptions]);
-
-  const remindCascaderValue = useMemo(() => {
-    if (!remindInDaysWatch) return [];
-    const matched = (timeRepeatOptions || []).find((r) => convertToDays(r.unit, r.number) === Number(remindInDaysWatch));
-    return matched ? [matched.unit, matched.id] : [];
-  }, [remindInDaysWatch, timeRepeatOptions]);
 
   const loadSopDocuments = async (selectedOptions) => {
     const target = selectedOptions[selectedOptions.length - 1];
@@ -183,24 +176,6 @@ export default function ChecklistModal({ open, onCancel, onAdded }) {
   const handleOk = async () => {
     try {
       const values = await form.validateFields();
-
-      // Additional cross-field validations
-      if (!values.repeatId) {
-        openNotification("error", t.err, `${t.pleaseChoose.toLowerCase()} ${t.repeat.toLowerCase()}`);
-        return;
-      }
-      if (values.dueInDays == null) {
-        openNotification("error", t.err, `${t.pleaseChoose.toLowerCase()} ${t.due.toLowerCase()}`);
-        return;
-      }
-      if (values.remindInDays == null) {
-        openNotification("error", t.err, `${t.pleaseChoose.toLowerCase()} ${t.remind.toLowerCase()}`);
-        return;
-      }
-      if (Number(values.remindInDays) >= Number(values.dueInDays)) {
-        openNotification("error", t.err, lang === 'zh' ? "提醒时间必须小于完成时限" : "Thời gian nhắc nhở phải nhỏ hơn thời gian cần hoàn thành");
-        return;
-      }
       setIsLoading(true);
 
       const resolvedRepeatId = values.repeatId ? Number(values.repeatId) : null;
@@ -212,7 +187,6 @@ export default function ChecklistModal({ open, onCancel, onAdded }) {
         startAt: values.startAt ? values.startAt.format('YYYY-MM-DDTHH:mm:ss') : null,
         repeatId: resolvedRepeatId,
         dueInDays: values.dueInDays,
-        remindInDays: values.remindInDays,
         sopDocumentId: values.sopIds && values.sopIds.length > 0 ? values.sopIds[0] : null,
         creator: String(nguoiDung?.userID ?? '').trim() || null,
         status: 'ACTIVE',
@@ -227,11 +201,7 @@ export default function ChecklistModal({ open, onCancel, onAdded }) {
       onAdded?.();
       onCancel?.();
     } catch (err) {
-      if (err?.response?.status === 400) {
-        openNotification("error", t.err, t.startTimeInvalid);
-      } else {
-        openNotification("error", t.sys, t.addFail);
-      }
+      openNotification("error", t.sys, t.addFail);
     } finally {
       setIsLoading(false);
     }
@@ -334,21 +304,7 @@ export default function ChecklistModal({ open, onCancel, onAdded }) {
           <Form.Item 
             name="startAt" 
             label={t.startAt}
-            rules={[
-              { required: true, message: 'Vui lòng chọn thời gian bắt đầu' },
-              {
-                validator: (_, value) => {
-                  if (!value) {
-                    return Promise.resolve();
-                  }
-                  const now = dayjs();
-                  if (value.isBefore(now)) {
-                    return Promise.reject(new Error(t.startTimeInvalid));
-                  }
-                  return Promise.resolve();
-                }
-              }
-            ]}
+            rules={[{ required: true, message: lang === 'zh' ? '请选择开始时间' : 'Vui lòng chọn thời gian bắt đầu' }]}
           >
             <DatePicker 
               showTime 
@@ -359,7 +315,14 @@ export default function ChecklistModal({ open, onCancel, onAdded }) {
             />
           </Form.Item>
 
-          <Form.Item label={t.repeat}>
+          <Form.Item 
+            label={t.repeat}
+            name="repeatId"
+            rules={[{ 
+              required: true, 
+              message: lang === 'zh' ? '请选择重复时间' : 'Vui lòng chọn thời gian lặp lại' 
+            }]}
+          >
             <Cascader
               placeholder={t.repeatPh}
               options={repeatCascaderOptions}
@@ -372,19 +335,27 @@ export default function ChecklistModal({ open, onCancel, onAdded }) {
                 return `${numberLabel} ${unitLabel}`;
               }}
               onChange={(path) => {
-                const id = Array.isArray(path) && path.length === 2 ? path[1] : null;
-                form.setFieldsValue({ repeatId: id || null });
+                if (path && Array.isArray(path) && path.length === 2) {
+                  const id = path[1];
+                  form.setFieldsValue({ repeatId: id });
+                } else {
+                  form.setFieldsValue({ repeatId: undefined });
+                }
               }}
               allowClear
               changeOnSelect={false}
               style={{ width: '100%' }}
             />
           </Form.Item>
-          <Form.Item name="repeatId" noStyle rules={[{ required: true, message: 'Vui lòng chọn thời gian lặp lại' }]}>
-            <InputNumber style={{ display: 'none' }} />
-          </Form.Item>
 
-          <Form.Item label={t.due}>
+          <Form.Item 
+            label={t.due}
+            name="dueInDays"
+            rules={[{ 
+              required: true, 
+              message: lang === 'zh' ? '请选择完成时限' : 'Vui lòng chọn thời gian cần hoàn thành' 
+            }]}
+          >
             <Cascader
               placeholder={t.duePh}
               options={repeatCascaderOptions}
@@ -393,56 +364,33 @@ export default function ChecklistModal({ open, onCancel, onAdded }) {
                 if (!selectedOptions || selectedOptions.length !== 2) return labels.join(" / ");
                 const unit = selectedOptions[0]?.value;
                 const numberLabel = selectedOptions[1]?.label;
-                const unitLabel = { day: "ngày", week: "tuần", month: "tháng", year: "năm" }[unit] || unit;
+                const unitLabel = lang === 'zh' 
+                  ? { day: "天", week: "周", month: "月", year: "年" }[unit] || unit 
+                  : { day: "ngày", week: "tuần", month: "tháng", year: "năm" }[unit] || unit;
                 return `${numberLabel} ${unitLabel}`;
               }}
               onChange={(path) => {
-                if (Array.isArray(path) && path.length === 2) {
+                if (path && Array.isArray(path) && path.length === 2) {
                   const selected = (timeRepeatOptions || []).find((r) => r.id === path[1]);
                   const days = selected ? convertToDays(selected.unit, selected.number) : null;
                   form.setFieldsValue({ dueInDays: days });
                 } else {
-                  form.setFieldsValue({ dueInDays: null });
+                  form.setFieldsValue({ dueInDays: undefined });
                 }
               }}
               allowClear
               style={{ width: '100%' }}
             />
           </Form.Item>
-          <Form.Item name="dueInDays" noStyle rules={[{ required: true, message: 'Vui lòng chọn thời gian cần hoàn thành' }]}>
-            <InputNumber style={{ display: 'none' }} />
-          </Form.Item>
 
-          <Form.Item label={t.remind}>
-            <Cascader
-              placeholder={t.remindPh}
-              options={repeatCascaderOptions}
-              value={remindCascaderValue}
-              displayRender={(labels, selectedOptions) => {
-                if (!selectedOptions || selectedOptions.length !== 2) return labels.join(" / ");
-                const unit = selectedOptions[0]?.value;
-                const numberLabel = selectedOptions[1]?.label;
-                const unitLabel = { day: "ngày", week: "tuần", month: "tháng", year: "năm" }[unit] || unit;
-                return `${numberLabel} ${unitLabel}`;
-              }}
-              onChange={(path) => {
-                if (Array.isArray(path) && path.length === 2) {
-                  const selected = (timeRepeatOptions || []).find((r) => r.id === path[1]);
-                  const days = selected ? convertToDays(selected.unit, selected.number) : null;
-                  form.setFieldsValue({ remindInDays: days });
-                } else {
-                  form.setFieldsValue({ remindInDays: null });
-                }
-              }}
-              allowClear
-              style={{ width: '100%' }}
-            />
-          </Form.Item>
-          <Form.Item name="remindInDays" noStyle rules={[{ required: true, message: 'Vui lòng chọn thời gian nhắc nhở' }]}>
-            <InputNumber style={{ display: 'none' }} />
-          </Form.Item>
-
-          <Form.Item name="implementers" label={t.implementers}>
+          <Form.Item 
+            name="implementers" 
+            label={t.implementers}
+            rules={[{ 
+              required: true, 
+              message: lang === 'zh' ? '请选择执行人' : 'Vui lòng chọn người thực hiện' 
+            }]}
+          >
             <Select
               placeholder={t.implementersPh}
               options={[

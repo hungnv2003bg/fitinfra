@@ -3,7 +3,6 @@ import axios from '../plugins/axios';
 const API_BASE_URL = '/api/limit-size';
 
 export const limitSizeService = {
-  // Lấy tất cả limit size settings
   getAllLimitSizes: async () => {
     try {
       const response = await axios.get(API_BASE_URL);
@@ -14,7 +13,7 @@ export const limitSizeService = {
     }
   },
 
-  // Lấy tất cả limit size settings đang active
+
   getActiveLimitSizes: async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/active`);
@@ -25,7 +24,6 @@ export const limitSizeService = {
     }
   },
 
-  // Lấy limit size theo ID
   getLimitSizeById: async (id) => {
     try {
       const response = await axios.get(`${API_BASE_URL}/${id}`);
@@ -36,7 +34,6 @@ export const limitSizeService = {
     }
   },
 
-  // Lấy giới hạn kích thước file upload hiện tại
   getFileUploadLimit: async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/file-upload-limit`);
@@ -48,7 +45,6 @@ export const limitSizeService = {
     }
   },
 
-  // Tạo mới limit size setting
   createLimitSize: async (limitSizeData) => {
     try {
       const response = await axios.post(API_BASE_URL, limitSizeData);
@@ -59,7 +55,6 @@ export const limitSizeService = {
     }
   },
 
-  // Cập nhật limit size setting
   updateLimitSize: async (id, limitSizeData) => {
     try {
       const response = await axios.put(`${API_BASE_URL}/${id}`, limitSizeData);
@@ -70,7 +65,6 @@ export const limitSizeService = {
     }
   },
 
-  // Xóa limit size setting (soft delete)
   deleteLimitSize: async (id) => {
     try {
       const response = await axios.delete(`${API_BASE_URL}/${id}`);
@@ -81,7 +75,6 @@ export const limitSizeService = {
     }
   },
 
-  // Xóa vĩnh viễn limit size setting
   permanentDeleteLimitSize: async (id) => {
     try {
       const response = await axios.delete(`${API_BASE_URL}/${id}/permanent`);
@@ -92,7 +85,6 @@ export const limitSizeService = {
     }
   },
 
-  // Kích hoạt/tắt limit size setting
   toggleLimitSizeStatus: async (id) => {
     try {
       const response = await axios.patch(`${API_BASE_URL}/${id}/toggle`);
@@ -103,7 +95,6 @@ export const limitSizeService = {
     }
   },
 
-  // Kiểm tra kích thước file có vượt quá giới hạn không
   checkFileSize: async (fileSizeInBytes, settingName = 'FILE_UPLOAD_LIMIT') => {
     try {
       const response = await axios.post(`${API_BASE_URL}/check-file-size`, {
@@ -117,7 +108,6 @@ export const limitSizeService = {
     }
   },
 
-  // Khởi tạo setting mặc định cho file upload limit
   initDefaultSettings: async () => {
     try {
       const response = await axios.post(`${API_BASE_URL}/init-default`);
