@@ -45,15 +45,8 @@ function AppContent() {
     
     if (authData) {
       dispatch(userSlice.actions.dangNhap(authData));
-      axios.get('/api/auth/me')
-        .then(() => {
-        })
-        .catch((error) => {
-          if (error && error.response && (error.response.status === 401 || error.response.status === 403)) {
-            clearAuthData();
-            dispatch(userSlice.actions.dangXuat());
-          }
-        });
+      // No need to call /api/auth/me here - the axios interceptor will handle token validation
+      // and auto-refresh if needed on subsequent API calls
     } else {
       dispatch(userSlice.actions.dangXuat());
     }
@@ -77,6 +70,8 @@ function AppContent() {
           .map(sop => sop.id.toString());
         setSopCategories(categories);
       } catch (error) {
+        // Don't logout on fetch error - let axios interceptor handle auth errors
+        console.warn('Failed to fetch SOP categories:', error);
         if (hasPermissionAccess()) {
           setSopCategories(['cài-win', 'cài-network', 'hướng-dẫn-tải-phần-mềm']);
         } else {
