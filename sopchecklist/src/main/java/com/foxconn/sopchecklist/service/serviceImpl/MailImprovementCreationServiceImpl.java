@@ -65,6 +65,172 @@ public class MailImprovementCreationServiceImpl implements MailImprovementCreati
         sendToChecklistMailList(subject, body, detail);
     }
 
+    @Override
+    public void queueDirectImprovementCreationMail(Improvements improvement) {
+        if (improvement == null) return;
+
+        String subject = buildDirectImprovementSubject(improvement);
+        String body = buildDirectImprovementBody(improvement);
+
+        // 1) Recipients from system settings "Thông báo mail cải thiện"
+        sendToImprovementSettings(subject, body, improvement);
+
+        // 2) Send to responsible persons and collaborators
+        sendToResponsibleAndCollaborators(subject, body, improvement);
+    }
+
+    private String buildDirectImprovementSubject(Improvements i) {
+        String category = i.getCategory() != null ? i.getCategory() : "Cải thiện";
+        return "Thông báo cải thiện mới: " + category;
+    }
+
+    private String buildDirectImprovementBody(Improvements i) {
+        DateTimeFormatter dateFmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        DateTimeFormatter dateTimeFmt = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+        
+        String category = safe(i.getCategory());
+        String issueDescription = safe(i.getIssueDescription());
+        String responsible = getResponsibleDisplay(i.getResponsible());
+        String collaborators = getResponsibleDisplay(i.getCollaborators());
+        String improvementEvent = i.getImprovementEvent() != null ? safe(i.getImprovementEvent().getEventName()) : "";
+        String actionPlan = safe(i.getActionPlan());
+        String plannedDue = i.getPlannedDueAt() != null ? i.getPlannedDueAt().format(dateTimeFmt) : "";
+        String created = i.getCreatedAt() != null ? i.getCreatedAt().format(dateTimeFmt) : "";
+
+        StringBuilder body = new StringBuilder();
+        body.append("<div style=\"font-family:Arial,Helvetica,sans-serif;color:#333;line-height:1.6;\">");
+        body.append("<h2 style=\"margin:0 0 12px;color:#0d6efd;\">📋 Thông báo cải thiện mới</h2>");
+        body.append("<table style=\"border-collapse:collapse;width:100%;\">" );
+        row(body, "Hạng mục", category);
+        row(body, "Nội dung cải thiện", issueDescription);
+        row(body, "Người phụ trách", responsible);
+        if (!collaborators.isEmpty()) {
+            row(body, "Người phối hợp", collaborators);
+        }
+        if (!improvementEvent.isEmpty()) {
+            row(body, "Loại sự kiện", improvementEvent);
+        }
+        if (!actionPlan.isEmpty()) {
+            row(body, "Hành động cải thiện", actionPlan);
+        }
+        if (!plannedDue.isEmpty()) {
+            row(body, "Thời gian dự kiến hoàn thành", plannedDue);
+        }
+        row(body, "Thời gian tạo", created);
+        body.append("</table>");
+
+        try {
+            Integer improvementId = i.getImprovementID();
+            if (improvementId != null) {
+                String link = appPublicUrl + "/improvement?improvementId=" + improvementId;
+                body.append("<p style=\"margin-top:12px;\"><a href=\"");
+                body.append(link);
+                body.append("\" style=\"display:inline-block;background:#0d6efd;color:#fff;padding:8px 12px;border-radius:4px;text-decoration:none;\">Xem chi tiết cải thiện</a></p>");
+            }
+        } catch (Exception ignore) {}
+
+        body.append("<p><strong>Trân trọng,</strong></p>");
+        body.append("<p><em>Hệ thống IT Management</em></p>");
+        body.append("</div>");
+        return body.toString();
+    }
+
+    private void sendToResponsibleAndCollaborators(String subject, String body, Improvements improvement) {
+        // Lấy danh sách email người phụ trách
+        StringBuilder emailCsv = new StringBuilder();
+        List<String> responsibleList = improvement.getResponsible();
+        if (responsibleList != null && !responsibleList.isEmpty()) {
+            for (String responsible : responsibleList) {
+                String email = resolveResponsibleEmail(responsible);
+                if (email != null && !email.trim().isEmpty()) {
+                    if (emailCsv.length() > 0) emailCsv.append(",");
+                    emailCsv.append(email);
+                }
+            }
+        }
+        
+        // Lấy danh sách email người phối hợp
+        StringBuilder ccCsv = new StringBuilder();
+        List<String> collaboratorsList = improvement.getCollaborators();
+        if (collaboratorsList != null && !collaboratorsList.isEmpty()) {
+            for (String collaborator : collaboratorsList) {
+                String email = resolveResponsibleEmail(collaborator);
+                if (email != null && !email.trim().isEmpty()) {
+                    if (ccCsv.length() > 0) ccCsv.append(",");
+                    ccCsv.append(email);
+                }
+            }
+        }
+        
+        String emailCsvStr = emailCsv.toString();
+        String ccCsvStr = ccCsv.toString();
+        
+        // Chỉ tạo mail record nếu có ít nhất người phụ trách hoặc người phối hợp
+        if ((emailCsvStr != null && !emailCsvStr.trim().isEmpty()) || 
+            (ccCsvStr != null && !ccCsvStr.trim().isEmpty())) {
+            Long referenceId = improvement.getImprovementID() != null ? improvement.getImprovementID().longValue() : null;
+            createMailRecord("IMPROVEMENT_CREATION", subject, body, emailCsvStr, ccCsvStr, "", referenceId);
+        }
+    }
+
+    private String getResponsibleDisplay(List<String> responsibleList) {
+        if (responsibleList == null || responsibleList.isEmpty()) return "";
+        return responsibleList.stream()
+                .map(this::getImplementerDisplay)
+                .collect(Collectors.joining(", "));
+    }
+
+    private String resolveResponsibleEmail(String responsible) {
+        if (responsible == null) return null;
+        String name = responsible.trim();
+        if (name.isEmpty()) return null;
+        String lower = name.toLowerCase();
+        try {
+            if (lower.startsWith("group:")) {
+                Long gid = Long.parseLong(lower.substring("group:".length()).trim());
+                Group grp = groupRepository.findById(gid).orElse(null);
+                if (grp != null && grp.getUsers() != null) {
+                    return grp.getUsers().stream()
+                            .map(Users::getEmail)
+                            .filter(e -> e != null && !e.trim().isEmpty())
+                            .distinct()
+                            .collect(Collectors.joining(","));
+                }
+            } else if (lower.startsWith("user:")) {
+                Integer uid = Integer.parseInt(lower.substring("user:".length()).trim());
+                Users u = usersRepository.findById(uid).orElse(null);
+                if (u != null && u.getEmail() != null && !u.getEmail().trim().isEmpty()) return u.getEmail();
+            }
+        } catch (Exception ignore) {}
+
+        Group grpByName = groupRepository.findByNameIgnoreCase(name).orElse(null);
+        if (grpByName != null && grpByName.getUsers() != null) {
+            return grpByName.getUsers().stream()
+                    .map(Users::getEmail)
+                    .filter(e -> e != null && !e.trim().isEmpty())
+                    .distinct()
+                    .collect(Collectors.joining(","));
+        }
+
+        if (name.contains("@")) {
+            Users uByEmail = usersRepository.findByEmail(name).orElse(null);
+            if (uByEmail != null && uByEmail.getEmail() != null) return uByEmail.getEmail();
+            return name;
+        }
+
+        Users uByManv = usersRepository.findByManv(name).orElse(null);
+        if (uByManv != null && uByManv.getEmail() != null) return uByManv.getEmail();
+
+        List<Users> all = usersRepository.findAll();
+        String fromName = all.stream()
+                .filter(u -> u.getFullName() != null && u.getFullName().equalsIgnoreCase(name))
+                .map(Users::getEmail)
+                .filter(e -> e != null && !e.trim().isEmpty())
+                .findFirst()
+                .orElse(null);
+        return fromName;
+    }
+
     private String buildSubject(ChecklistDetail d) {
         String task = d.getTaskName() != null ? d.getTaskName() : "Checklist";
         return "Thông báo phát sinh cải thiện: " + task;
@@ -115,7 +281,7 @@ public class MailImprovementCreationServiceImpl implements MailImprovementCreati
     }
 
     private void sendToImplementer(String subject, String body, ChecklistDetail detail) {
-        String implementerCsv = resolveImplementerEmail(detail.getImplementer());
+        String implementerCsv = resolveResponsibleEmail(detail.getImplementer());
         if (implementerCsv != null && !implementerCsv.trim().isEmpty()) {
             createMailRecord("IMPROVEMENT_IMPLEMENTER", subject, body, implementerCsv, "", "", detail.getId());
         }
@@ -214,57 +380,6 @@ public class MailImprovementCreationServiceImpl implements MailImprovementCreati
         Users byEmail = implementer.contains("@") ? usersRepository.findByEmail(implementer).orElse(null) : null;
         if (byEmail != null && byEmail.getFullName() != null) return byEmail.getFullName();
         return implementer;
-    }
-
-    private String resolveImplementerEmail(String implementer) {
-        if (implementer == null) return null;
-        String name = implementer.trim();
-        if (name.isEmpty()) return null;
-        String lower = name.toLowerCase();
-        try {
-            if (lower.startsWith("group:")) {
-                Long gid = Long.parseLong(lower.substring("group:".length()).trim());
-                Group grp = groupRepository.findById(gid).orElse(null);
-                if (grp != null && grp.getUsers() != null) {
-                    return grp.getUsers().stream()
-                            .map(Users::getEmail)
-                            .filter(e -> e != null && !e.trim().isEmpty())
-                            .distinct()
-                            .collect(Collectors.joining(","));
-                }
-            } else if (lower.startsWith("user:")) {
-                Integer uid = Integer.parseInt(lower.substring("user:".length()).trim());
-                Users u = usersRepository.findById(uid).orElse(null);
-                if (u != null && u.getEmail() != null && !u.getEmail().trim().isEmpty()) return u.getEmail();
-            }
-        } catch (Exception ignore) {}
-
-        Group grpByName = groupRepository.findByNameIgnoreCase(name).orElse(null);
-        if (grpByName != null && grpByName.getUsers() != null) {
-            return grpByName.getUsers().stream()
-                    .map(Users::getEmail)
-                    .filter(e -> e != null && !e.trim().isEmpty())
-                    .distinct()
-                    .collect(Collectors.joining(","));
-        }
-
-        if (name.contains("@")) {
-            Users uByEmail = usersRepository.findByEmail(name).orElse(null);
-            if (uByEmail != null && uByEmail.getEmail() != null) return uByEmail.getEmail();
-            return name;
-        }
-
-        Users uByManv = usersRepository.findByManv(name).orElse(null);
-        if (uByManv != null && uByManv.getEmail() != null) return uByManv.getEmail();
-
-        List<Users> all = usersRepository.findAll();
-        String fromName = all.stream()
-                .filter(u -> u.getFullName() != null && u.getFullName().equalsIgnoreCase(name))
-                .map(Users::getEmail)
-                .filter(e -> e != null && !e.trim().isEmpty())
-                .findFirst()
-                .orElse(null);
-        return fromName;
     }
 
     private static void row(StringBuilder body, String name, String value) {

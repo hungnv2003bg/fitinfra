@@ -484,6 +484,19 @@ export default function SOPDetailModal({ open, sop, onCancel }) {
                     <div style={{ fontWeight: 'bold' }}>{file.fileName}</div>
                     <div style={{ fontSize: '12px', color: '#666' }}>
                       {file.fileType} • {(file.fileSize / 1024).toFixed(1)} KB
+                      {(file.createdAt || file.created_at) && (
+                        <>
+                          {' • '}
+                          {lang === 'zh' ? '上传时间: ' : 'Thời gian upload: '}
+                          {new Date(file.createdAt || file.created_at).toLocaleString(lang === 'zh' ? 'zh-CN' : 'vi-VN', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </>
+                      )}
                     </div>
                   </div>
                   <Button 
@@ -496,7 +509,6 @@ export default function SOPDetailModal({ open, sop, onCancel }) {
                   </Button>
                 </div>
                 
-                {}
                 {file.fileType === 'image' && (
                   <div style={{ textAlign: 'center' }}>
                     <Image
@@ -510,19 +522,6 @@ export default function SOPDetailModal({ open, sop, onCancel }) {
                       }}
                       fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMIAAADDCAYAAADQvc6UAAABRWlDQ1BJQ0MgUHJvZmlsZQAAKJFjYGASSSwoyGFhYGDIzSspCnJ3UoiIjFJgf8LAwSDCIMogwMCcmFxc4BgQ4ANUwgCjUcG3awyMIPqyLsis7PPOq3QdDFcvjV3jOD1boQVTPQrgSkktTgbSf4A4LbmgqISBgTEFyFYuLykAsTuAbJEioKOA7DkgdjqEvQHEToKwj4DVhAQ5A9k3gGyB5IxEoBmML4BsnSQk8XQkNtReEOBxcfXxUQg1Mjc0dyHgXNJBSWpFCYh2zi+oLMpMzyhRcASGUqqCZ16yno6CkYGRAQMDKMwhqj/fAIcloxgHQqxAjIHBEugw5sUIsSQpBobtQPdLciLEVJYzMPBHMDBsayhILEqEO4DxG0txmrERhM29nYGBddr"
                     />
-                  </div>
-                )}
-                
-                {(file.fileType !== 'image' && file.fileType !== 'video') && file.createdAt && (
-                  <div style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>
-                    {lang === 'zh' ? '上传时间' : 'Thời gian upload'}: {new Date(file.createdAt).toLocaleString('vi-VN', {
-                      year: 'numeric',
-                      month: '2-digit',
-                      day: '2-digit',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      second: '2-digit'
-                    })}
                   </div>
                 )}
               </div>

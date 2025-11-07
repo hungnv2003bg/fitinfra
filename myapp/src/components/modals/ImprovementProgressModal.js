@@ -6,8 +6,10 @@ import { useSelector } from "react-redux";
 import { formatDateShortVN } from "../../utils/dateUtils";
 import API_CONFIG from "../../config/api";
 import { validateFileSizeAsync } from "../../utils/fileUtils";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 export default function ImprovementProgressModal({ open, record, onCancel, onSaved }) {
+  const { lang } = useLanguage();
   const [form] = Form.useForm();
   const [editForm] = Form.useForm();
   const [api, contextHolder] = notification.useNotification();
@@ -21,11 +23,90 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
   const [improvementFileCount, setImprovementFileCount] = useState(0);
   const [editFiles, setEditFiles] = useState([]);
   const [currentFiles, setCurrentFiles] = useState([]);
-  const statusOptions = [
-    { value: 0, label: 'Chưa thực hiện' },
-    { value: 1, label: 'Đang thực hiện' },
-    { value: 2, label: 'Hoàn thành' },
-  ];
+  
+  const t = lang === 'zh' ? {
+    title: '更新进度',
+    editTitle: '编辑进度',
+    viewTitle: '进度详情',
+    progress: '进度 (%)',
+    progressPh: '请输入进度: 5% 10% ...',
+    progressRequired: '请输入进度',
+    progressDetail: '进度内容',
+    progressDetailPh: '描述详细进度',
+    status: '状态',
+    files: '附件',
+    chooseFile: '选择文件',
+    existingFiles: '现有文件',
+    filesToAdd: '将添加的文件',
+    completionProgress: '完成进度',
+    time: '时间',
+    content: '内容',
+    quantity: '数量',
+    actions: '操作',
+    deleteConfirm: '删除此进度？',
+    save: '保存',
+    cancel: '取消',
+    delete: '删除',
+    maxProgress: '总进度最多为 100%',
+    sys: '系统',
+    loadFailed: '加载进度历史失败',
+    exceedProgress: '总进度超过 100%。请输入小于或等于剩余百分比的值。',
+    uploadFailed: '文件上传失败',
+    updateSuccess: '更新进度成功',
+    updateFailed: '更新进度失败',
+    exceedEdit: '总进度超过 100%。请减少值以使总数不超过 100%。',
+    deleteSuccess: '删除进度成功',
+    deleteFailed: '删除进度失败',
+    uploadError: '上传错误',
+    noFiles: '无文件',
+    statusOptions: [
+      { value: 0, label: '未开始' },
+      { value: 1, label: '进行中' },
+      { value: 2, label: '已完成' },
+    ],
+  } : {
+    title: 'Cập nhật tiến độ',
+    editTitle: 'Sửa tiến độ',
+    viewTitle: 'Chi tiết tiến độ',
+    progress: 'Tiến độ (%)',
+    progressPh: 'Vui lòng nhập tiến độ: 5% 10% ...',
+    progressRequired: 'Nhập tiến độ',
+    progressDetail: 'Nội dung tiến độ',
+    progressDetailPh: 'Mô tả chi tiết tiến độ',
+    status: 'Trạng thái',
+    files: 'Tài liệu đính kèm',
+    chooseFile: 'Chọn tài liệu',
+    existingFiles: 'Tài liệu hiện có',
+    filesToAdd: 'File sẽ thêm',
+    completionProgress: 'Tiến độ hoàn thành công việc',
+    time: 'Thời gian',
+    content: 'Nội dung',
+    quantity: 'Số lượng',
+    actions: 'Thao tác',
+    deleteConfirm: 'Xóa tiến độ này?',
+    save: 'Lưu',
+    cancel: 'Hủy',
+    delete: 'Xóa',
+    maxProgress: 'Tổng tiến độ tối đa là 100%',
+    sys: 'Hệ thống',
+    loadFailed: 'Tải lịch sử tiến độ thất bại',
+    exceedProgress: 'Tổng tiến độ vượt 100%. Vui lòng nhập giá trị nhỏ hơn hoặc bằng phần trăm còn lại.',
+    uploadFailed: 'Upload file thất bại',
+    updateSuccess: 'Đã cập nhật tiến độ',
+    updateFailed: 'Cập nhật tiến độ thất bại',
+    exceedEdit: 'Tổng tiến độ vượt 100%. Vui lòng giảm giá trị để tổng không vượt 100%.',
+    deleteSuccess: 'Đã xóa tiến độ',
+    deleteFailed: 'Xóa tiến độ thất bại',
+    uploadError: 'Lỗi upload',
+    noFiles: 'Không có tài liệu',
+    statusOptions: [
+      { value: 0, label: 'Chưa thực hiện' },
+      { value: 1, label: 'Đang thực hiện' },
+      { value: 2, label: 'Hoàn thành' },
+    ],
+  };
+  
+  const statusOptions = t.statusOptions;
 
   useEffect(() => {
     if (record) {
@@ -73,7 +154,7 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
       setProgressList(sorted);
     } catch (err) {
       setProgressList([]);
-      notification.error({ message: 'Hệ thống', description: 'Tải lịch sử tiến độ thất bại', placement: 'bottomRight' });
+      notification.error({ message: t.sys, description: t.loadFailed, placement: 'bottomRight' });
     } finally {
       setLoadingList(false);
     }
@@ -129,7 +210,7 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
         ? progressList.filter(p => p.status === 2).reduce((sum, p) => sum + (typeof p.progressPercent === 'number' ? p.progressPercent : 0), 0)
         : 0;
       if (totalFromList + (values.progress || 0) > 100) {
-        notification.error({ message: 'Hệ thống', description: 'Tổng tiến độ vượt 100%. Vui lòng nhập giá trị nhỏ hơn hoặc bằng phần trăm còn lại.', placement: 'bottomRight' });
+        notification.error({ message: t.sys, description: t.exceedProgress, placement: 'bottomRight' });
         return;
       }
 
@@ -141,7 +222,7 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
             files.map(f => uploadFileToBackend(f.originFileObj, record.category))
           );
         } catch (uploadError) {
-          notification.error({ message: 'Hệ thống', description: 'Upload file thất bại', placement: 'bottomRight' });
+          notification.error({ message: t.sys, description: t.uploadFailed, placement: 'bottomRight' });
           return;
         }
       }
@@ -166,13 +247,13 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
         setImprovementFileCount(updatedFiles.length);
       }
 
-      notification.success({ message: 'Hệ thống', description: 'Đã cập nhật tiến độ', placement: 'bottomRight' });
+      notification.success({ message: t.sys, description: t.updateSuccess, placement: 'bottomRight' });
       await loadProgress();
       form.setFieldsValue({ progress: undefined, progressDetail: "", status: 0 });
       setFiles([]);
       onSaved?.();
     } catch (err) {
-      notification.error({ message: 'Hệ thống', description: 'Cập nhật tiến độ thất bại', placement: 'bottomRight' });
+      notification.error({ message: t.sys, description: t.updateFailed, placement: 'bottomRight' });
     }
   };
 
@@ -199,7 +280,7 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
       const original = typeof editingRecord?.progressPercent === 'number' ? editingRecord.progressPercent : 0;
       const newTotal = totalFromList - original + (values.progress || 0);
       if (newTotal > 100) {
-        notification.error({ message: 'Hệ thống', description: 'Tổng tiến độ vượt 100%. Vui lòng giảm giá trị để tổng không vượt 100%.', placement: 'bottomRight' });
+        notification.error({ message: t.sys, description: t.exceedEdit, placement: 'bottomRight' });
         return;
       }
       await axios.patch(`/api/improvement-progress/${editingRecord.id}`, {
@@ -217,7 +298,7 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
             editFiles.map(f => uploadFileToBackend(f.originFileObj, record.category))
           );
         } catch (uploadError) {
-          notification.error({ message: 'Hệ thống', description: 'Upload file thất bại', placement: 'bottomRight' });
+          notification.error({ message: t.sys, description: t.uploadFailed, placement: 'bottomRight' });
         }
       }
 
@@ -231,26 +312,26 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
         setImprovementFileCount(updatedFiles.length);
       }
 
-      notification.success({ message: 'Hệ thống', description: 'Đã cập nhật tiến độ', placement: 'bottomRight' });
+      notification.success({ message: t.sys, description: t.updateSuccess, placement: 'bottomRight' });
       await loadProgress();
       setEditModalOpen(false);
       setEditingRecord(null);
       setEditFiles([]);
       onSaved?.();
     } catch (err) {
-      notification.error({ message: 'Hệ thống', description: 'Cập nhật tiến độ thất bại', placement: 'bottomRight' });
+      notification.error({ message: t.sys, description: t.updateFailed, placement: 'bottomRight' });
     }
   };
 
   const handleDelete = async (progressId) => {
     try {
       await axios.delete(`/api/improvement-progress/${progressId}`);
-      notification.success({ message: 'Hệ thống', description: 'Đã xóa tiến độ', placement: 'bottomRight' });
+      notification.success({ message: t.sys, description: t.deleteSuccess, placement: 'bottomRight' });
       await loadProgress();
       // Refresh outer list to reflect status/completedAt changes after deletion
       onSaved?.();
     } catch (err) {
-      notification.error({ message: 'Hệ thống', description: 'Xóa tiến độ thất bại', placement: 'bottomRight' });
+      notification.error({ message: t.sys, description: t.deleteFailed, placement: 'bottomRight' });
     }
   };
 
@@ -258,11 +339,11 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
     <>
       {contextHolder}
       <Modal
-        title="Cập nhật tiến độ"
+        title={t.title}
         open={open}
         onCancel={onCancel}
         onOk={handleOk}
-        okText="Lưu"
+        okText={t.save}
         width={750}
         style={{ top: "70px" }}
         okButtonProps={{ disabled: (totalProgressAll + Number(inputProgress || 0)) > 100 }}
@@ -270,14 +351,14 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
         <Form form={form} layout="vertical">
           <Form.Item
             name="progress"
-            label="Tiến độ (%)"
-            rules={[{ required: true, message: "Nhập tiến độ" }]}
+            label={t.progress}
+            rules={[{ required: true, message: t.progressRequired }]}
           >
             <InputNumber
               min={1}
               max={100}
               style={{ width: "100%" }}
-              placeholder="Vui lòng nhập tiến độ: 5% 10% ..."
+              placeholder={t.progressPh}
               value={inputProgress}
               onChange={(v) => { setInputProgress(v); form.setFieldsValue({ progress: v }); }}
               onFocus={() => setInputProgressFocused(true)}
@@ -286,18 +367,18 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
           </Form.Item>
           {(inputProgressFocused && (totalProgressAll + Number(inputProgress || 0)) > 100) && (
             <div style={{ color: 'red', marginBottom: 8 }}>
-              Tổng tiến độ tối đa là 100% 
+              {t.maxProgress}
             </div>
           )}
           
-          <Form.Item name="progressDetail" label="Nội dung tiến độ">
-            <Input.TextArea rows={4} placeholder="Mô tả chi tiết tiến độ" />
+          <Form.Item name="progressDetail" label={t.progressDetail}>
+            <Input.TextArea rows={4} placeholder={t.progressDetailPh} />
           </Form.Item>
-          <Form.Item name="status" label="Trạng thái">
+          <Form.Item name="status" label={t.status}>
             <Select options={statusOptions} />
           </Form.Item>
           
-          <Form.Item label="Tài liệu đính kèm">
+          <Form.Item label={t.files}>
             <Upload
               key={open ? 'upload-' + Date.now() : 'upload'}
               multiple
@@ -393,7 +474,7 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
         </Form>
 
         <Divider style={{ margin: "8px 0 12px" }}>
-          {`Tiến độ hoàn thành công việc ${overallProgress}/100%`}
+          {`${t.completionProgress} ${overallProgress}/100%`}
         </Divider>
         <Table
           size="small"
@@ -402,17 +483,16 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
           dataSource={progressList}
           pagination={{ pageSize: 5 }}
           columns={[
-            { title: "Thời gian", dataIndex: "createdAt", key: "createdAt", width: 150, onHeaderCell: () => ({ style: { textAlign: 'center' } }), render: (v, r) => formatDateShortVN(r.updatedAt || v) },
-            { title: "Tiến độ", dataIndex: "progressPercent", key: "progressPercent", width: 90, align: "center", onHeaderCell: () => ({ style: { textAlign: 'center' } }), render: (v) => (v != null ? `${v}%` : "-") },
+            { title: t.time, dataIndex: "createdAt", key: "createdAt", width: 150, onHeaderCell: () => ({ style: { textAlign: 'center' } }), render: (v, r) => formatDateShortVN(r.updatedAt || v) },
+            { title: t.progress, dataIndex: "progressPercent", key: "progressPercent", width: 90, align: "center", onHeaderCell: () => ({ style: { textAlign: 'center' } }), render: (v) => (v != null ? `${v}%` : "-") },
            
-            { title: "Nội dung", dataIndex: "progressDetail", key: "progressDetail", ellipsis: true, onHeaderCell: () => ({ style: { textAlign: 'center' } }) },
-            { title: "Trạng thái", dataIndex: "status", key: "status", width: 140, align: 'center', onHeaderCell: () => ({ style: { textAlign: 'center' } }), render: (v) => {
-              const map = { 0: 'Chưa thực hiện', 1: 'Đang thực hiện', 2: 'Hoàn thành' };
-              return map[v ?? 0];
+            { title: t.content, dataIndex: "progressDetail", key: "progressDetail", ellipsis: true, onHeaderCell: () => ({ style: { textAlign: 'center' } }) },
+            { title: t.status, dataIndex: "status", key: "status", width: 140, align: 'center', onHeaderCell: () => ({ style: { textAlign: 'center' } }), render: (v) => {
+              return statusOptions.find(opt => opt.value === (v ?? 0))?.label || '-';
             }
           },
             {
-              title: "Số lượng",
+              title: t.quantity,
               key: "filesCount",
               width: 100,
               align: "center",
@@ -420,7 +500,7 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
               render: () => (improvementFileCount > 0 ? `${improvementFileCount} file${improvementFileCount > 1 ? 's' : ''}` : '-')
             },
             {
-              title: "Thao tác",
+              title: t.actions,
               key: "actions",
               width: 100,
               align: "center",
@@ -440,10 +520,10 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
                     onClick={() => handleEdit(record)}
                   />
                   <Popconfirm
-                    title="Xóa tiến độ này?"
+                    title={t.deleteConfirm}
                     onConfirm={() => handleDelete(record.id)}
-                    okText="Xóa"
-                    cancelText="Hủy"
+                    okText={t.delete}
+                    cancelText={t.cancel}
                   >
                     <Button
                       type="link"
@@ -461,7 +541,7 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
 
       {/* Edit Progress Modal */}
       <Modal
-        title="Sửa tiến độ"
+        title={t.editTitle}
         open={editModalOpen}
         onOk={handleEditOk}
         onCancel={() => {
@@ -470,27 +550,27 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
           editForm.resetFields();
           setEditFiles([]);
         }}
-        okText="Lưu"
-        cancelText="Hủy"
+        okText={t.save}
+        cancelText={t.cancel}
         width={500}
         style={{ top: "90px" }}
       >
         <Form form={editForm} layout="vertical">
           <Form.Item
             name="progress"
-            label="Tiến độ (%)"
-            rules={[{ required: true, message: "Nhập tiến độ" }]}
+            label={t.progress}
+            rules={[{ required: true, message: t.progressRequired }]}
           >
             <InputNumber min={1} max={100} style={{ width: "100%" }} placeholder="Nhập 1 - 100" />
           </Form.Item>
-          <Form.Item name="progressDetail" label="Nội dung tiến độ">
-            <Input.TextArea rows={4} placeholder="Mô tả chi tiết tiến độ" />
+          <Form.Item name="progressDetail" label={t.progressDetail}>
+            <Input.TextArea rows={4} placeholder={t.progressDetailPh} />
           </Form.Item>
-          <Form.Item name="status" label="Trạng thái">
+          <Form.Item name="status" label={t.status}>
             <Select options={statusOptions} />
           </Form.Item>
           
-          <Form.Item label="Tài liệu đính kèm">
+          <Form.Item label={t.files}>
             <Upload
               key={editModalOpen ? 'edit-upload-' + Date.now() : 'edit-upload'}
               multiple
@@ -509,7 +589,7 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
 
                 checks.filter(c => !c.validation.isValid).forEach(c => {
                   notification.error({
-                    message: "Lỗi upload",
+                    message: t.uploadError,
                     description: c.validation.errorMessage,
                     placement: "bottomRight"
                   });
@@ -526,7 +606,7 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
                 });
               }}
             >
-              <Button icon={<UploadOutlined />}>Chọn tài liệu</Button>
+              <Button icon={<UploadOutlined />}>{t.chooseFile}</Button>
             </Upload>
 
             {/* Existing files of improvement */}
@@ -562,7 +642,7 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
                 style={{ marginTop: 12 }}
                 size="small"
                 bordered
-                header={<div>File sẽ thêm</div>}
+                header={<div>{t.filesToAdd}</div>}
                 dataSource={editFiles}
                 renderItem={(file, index) => (
                   <List.Item
@@ -589,7 +669,7 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
 
       {/* View Progress Modal */}
       <Modal
-        title="Chi tiết tiến độ"
+        title={t.viewTitle}
         open={!!viewingRecord}
         onCancel={() => setViewingRecord(null)}
         footer={null}
@@ -599,14 +679,14 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
         {viewingRecord && (
           <>
             <Descriptions column={1} bordered size="small">
-              <Descriptions.Item label="Thời gian">{formatDateShortVN(viewingRecord.updatedAt || viewingRecord.createdAt)}</Descriptions.Item>
-              <Descriptions.Item label="Tiến độ">{typeof viewingRecord.progressPercent === 'number' ? `${viewingRecord.progressPercent}%` : '-'}</Descriptions.Item>
-              <Descriptions.Item label="Nội dung">{viewingRecord.progressDetail || '-'}</Descriptions.Item>
-              <Descriptions.Item label="Trạng thái">{({0:'Chưa thực hiện',1:'Đang thực hiện',2:'Hoàn thành'})[viewingRecord?.status ?? 0]}</Descriptions.Item>
+              <Descriptions.Item label={t.time}>{formatDateShortVN(viewingRecord.updatedAt || viewingRecord.createdAt)}</Descriptions.Item>
+              <Descriptions.Item label={t.progress}>{typeof viewingRecord.progressPercent === 'number' ? `${viewingRecord.progressPercent}%` : '-'}</Descriptions.Item>
+              <Descriptions.Item label={t.content}>{viewingRecord.progressDetail || '-'}</Descriptions.Item>
+              <Descriptions.Item label={t.status}>{statusOptions.find(opt => opt.value === (viewingRecord?.status ?? 0))?.label || '-'}</Descriptions.Item>
             </Descriptions>
 
             {/* Files attached to this improvement */}
-            <Divider style={{ margin: "12px 0" }}>Tài liệu đính kèm</Divider>
+            <Divider style={{ margin: "12px 0" }}>{t.files}</Divider>
             {Array.isArray(currentFiles) && currentFiles.length > 0 ? (
               <List
                 size="small"
@@ -621,7 +701,7 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
                 )}
               />
             ) : (
-              <div>- Không có tài liệu -</div>
+              <div>- {t.noFiles} -</div>
             )}
           </>
         )}

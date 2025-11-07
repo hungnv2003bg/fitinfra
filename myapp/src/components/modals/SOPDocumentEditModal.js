@@ -18,6 +18,7 @@ export default function SOPDocumentEditModal({ open, record, onCancel, onSaved }
   const { triggerMenuRefresh } = useMenuRefresh();
   const [files, setFiles] = useState([]);
   const [existingFiles, setExistingFiles] = useState([]);
+  const [fileDeletePermissions, setFileDeletePermissions] = useState({});
   const { Text } = Typography;
 
   const openNotification = (type, title, desc) =>
@@ -26,7 +27,7 @@ export default function SOPDocumentEditModal({ open, record, onCancel, onSaved }
   const hasAdminAccess = () => {
     if (!quyenList || quyenList.length === 0) return false;
     return quyenList.some(role => 
-      role === "ADMIN" || role === "MANAGER" || role === "ROLE_ADMIN" || role === "ROLE_MANAGER"
+      role === "ADMIN" || role === "ROLE_ADMIN"
     );
   };
 
@@ -50,8 +51,18 @@ export default function SOPDocumentEditModal({ open, record, onCancel, onSaved }
   useEffect(() => {
     if (record && record.files) {
       setExistingFiles(record.files);
+      // Check delete permissions for each file
+      const checkPermissions = async () => {
+        const permissions = {};
+        for (const file of record.files) {
+          permissions[file.id] = await canDeleteFile(file);
+        }
+        setFileDeletePermissions(permissions);
+      };
+      checkPermissions();
     } else {
       setExistingFiles([]);
+      setFileDeletePermissions({});
     }
   }, [record]);
 
@@ -106,46 +117,16 @@ export default function SOPDocumentEditModal({ open, record, onCancel, onSaved }
       return;
     }
     
-    const loadingMessage = message.loading(
-      lang === 'zh' ? '正在检查删除权限...' : 'Đang kiểm tra quyền xóa...', 
-      0
-    );
-    
-    try {
-      const canDelete = await canDeleteFile(fileToDelete);
-      loadingMessage();
-      
-      if (!canDelete) {
-        const errorMsg = lang === 'zh' 
-          ? '您只能删除3天内创建的文件。请联系管理员删除较旧的文件。'
-          : 'Bạn chỉ có thể xóa file được tạo trong vòng 3 ngày. Vui lòng liên hệ admin để xóa file cũ hơn.';
-        message.error({
-          content: errorMsg,
-          placement: 'bottomRight',
-          duration: 5
-        });
-        return;
+    Modal.confirm({
+      title: lang === 'zh' ? '确认删除附件？' : 'Xóa tệp đính kèm?',
+      content: lang === 'zh' ? '您确定要删除此文件吗？' : 'Bạn có chắc muốn xóa tệp này?',
+      okText: lang === 'zh' ? '删除' : 'Xóa',
+      cancelText: lang === 'zh' ? '取消' : 'Hủy',
+      okButtonProps: { danger: true },
+      onOk: () => {
+        setExistingFiles(prev => prev.filter(f => f.id !== fileId));
       }
-      
-      Modal.confirm({
-        title: lang === 'zh' ? '确认删除附件？' : 'Xóa tệp đính kèm?',
-        content: lang === 'zh' ? '您确定要删除此文件吗？' : 'Bạn có chắc muốn xóa tệp này?',
-        okText: lang === 'zh' ? '删除' : 'Xóa',
-        cancelText: lang === 'zh' ? '取消' : 'Hủy',
-        okButtonProps: { danger: true },
-        onOk: () => {
-          setExistingFiles(prev => prev.filter(f => f.id !== fileId));
-        }
-      });
-    } catch (error) {
-      loadingMessage();
-      message.error({
-        content: lang === 'zh' 
-          ? '检查删除权限时出错，请稍后重试'
-          : 'Lỗi khi kiểm tra quyền xóa, vui lòng thử lại',
-        placement: 'bottomRight'
-      });
-    }
+    });
   };
 
   const removeNewFile = (uid) => {
@@ -351,12 +332,16 @@ export default function SOPDocumentEditModal({ open, record, onCancel, onSaved }
                     actions={[
                       <Button
                         type="text"
-                        danger={canDeleteFile(file)}
-                        disabled={!canDeleteFile(file)}
+                        danger={fileDeletePermissions[file.id]}
+                        disabled={!fileDeletePermissions[file.id]}
                         size="small"
                         icon={<DeleteOutlined />}
                         onClick={() => removeFile(file.id)}
-                        title={!canDeleteFile(file) ? (lang === 'zh' ? '文件超过3天，只有管理员可以删除' : 'File quá 3 ngày, chỉ admin mới có thể xóa') : (lang === 'zh' ? '删除文件' : 'Xóa file')}
+                        title={
+                          fileDeletePermissions[file.id] 
+                            ? (lang === 'zh' ? '删除文件' : 'Xóa file')
+                            : (lang === 'zh' ? '文件超过3天，只有管理员可以删除' : 'File quá 3 ngày,Vui lòng liên hệ admin')
+                        }
                       />
                     ]}
                   >
@@ -368,8 +353,24 @@ export default function SOPDocumentEditModal({ open, record, onCancel, onSaved }
                         </Text>
                       }
                       description={
-                        <div style={{ fontSize: 10 }}>
-                          {}
+                        <div style={{ fontSize: 10, color: '#666' }}>
+                          {file.fileSize && (
+                            <span style={{ marginRight: 12 }}>
+                              {formatFileSize(file.fileSize)}
+                            </span>
+                          )}
+                          {(file.createdAt || file.created_at) && (
+                            <span>
+                              {lang === 'zh' ? '上传时间: ' : 'Thời gian upload: '}
+                              {new Date(file.createdAt || file.created_at).toLocaleString(lang === 'zh' ? 'zh-CN' : 'vi-VN', {
+                                year: 'numeric',
+                                month: '2-digit',
+                                day: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          )}
                         </div>
                       }
                     />

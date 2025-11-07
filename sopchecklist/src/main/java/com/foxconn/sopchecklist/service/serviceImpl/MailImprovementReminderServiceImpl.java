@@ -101,7 +101,7 @@ public class MailImprovementReminderServiceImpl implements MailImprovementRemind
                 String link = appPublicUrl + "/improvement?improvementId=" + improvementId;
                 body.append("<p style=\"margin-top:12px;\"><a href=\"")
                         .append(link)
-                        .append("\" style=\"display:inline-block;background:#d9534f;color:#fff;padding:8px 12px;border-radius:4px;text-decoration:none;\">Xem Improvement</a></p>");
+                        .append("\" style=\"display:inline-block;background:#d9534f;color:#fff;padding:8px 12px;border-radius:4px;text-decoration:none;\">Xem cải thiện</a></p>");
             }
         } catch (Exception ignore) {}
 

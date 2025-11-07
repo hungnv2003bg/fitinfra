@@ -4,13 +4,57 @@ import dayjs from 'dayjs';
 import axios from "../../plugins/axios";
 import { useSelector } from "react-redux";
 import API_CONFIG from "../../config/api";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 export default function ImprovementEditModal({ open, record, onCancel, onSaved, groups = [], users = [] }) {
+  const { lang } = useLanguage();
   const [form] = Form.useForm();
   const [api, contextHolder] = notification.useNotification();
   const { nguoiDung } = useSelector(state => state.user);
   const [improvementEvents, setImprovementEvents] = useState([]);
   // Simplified: remove upload/progress fields
+
+  const t = lang === 'zh' ? {
+    title: '编辑改善',
+    category: '类别',
+    categoryPh: '任务名称',
+    issueDescription: '改善内容',
+    issueDescriptionRequired: '请输入改善内容',
+    responsible: '负责人',
+    responsiblePh: '选择负责人',
+    collaborators: '协同人',
+    collaboratorsPh: '输入协同人',
+    improvementEvent: '事件类型',
+    improvementEventPh: '选择事件类型',
+    plannedDueAt: '预计完成时间',
+    actionPlan: '改善行动',
+    note: '备注',
+    save: '保存',
+    cancel: '取消',
+    sys: '系统',
+    updateSuccess: '更新成功',
+    updateFailed: '更新失败',
+  } : {
+    title: 'Sửa cải thiện',
+    category: 'Hạng mục',
+    categoryPh: 'Tên công việc',
+    issueDescription: 'Nội dung cải thiện',
+    issueDescriptionRequired: 'Vui lòng nhập nội dung cải thiện',
+    responsible: 'Người phụ trách',
+    responsiblePh: 'Chọn người phụ trách',
+    collaborators: 'Người phối hợp',
+    collaboratorsPh: 'Nhập người phối hợp',
+    improvementEvent: 'Loại sự kiện',
+    improvementEventPh: 'Chọn loại sự kiện',
+    plannedDueAt: 'Thời gian dự kiến hoàn thành',
+    actionPlan: 'Hành động cải thiện',
+    note: 'Ghi chú',
+    save: 'Lưu',
+    cancel: 'Hủy',
+    sys: 'Hệ thống',
+    updateSuccess: 'Cập nhật thành công',
+    updateFailed: 'Cập nhật thất bại',
+  };
 
   // Helper functions để hiển thị tên group và user (same as in ImprovementPage)
   function getUserDisplayName(userId) {
@@ -95,11 +139,34 @@ export default function ImprovementEditModal({ open, record, onCancel, onSaved, 
 
   useEffect(() => {
     if (record) {
+      // Normalize responsible and collaborators to ensure correct format
+      const normalizeValue = (val) => {
+        if (!val) return val;
+        if (typeof val === 'string') {
+          // Fix format: "group1" -> "group:1", "user3" -> "user:3"
+          if (val.match(/^group\d+$/)) {
+            return val.replace(/^group(\d+)$/, 'group:$1');
+          }
+          if (val.match(/^user\d+$/)) {
+            return val.replace(/^user(\d+)$/, 'user:$1');
+          }
+        }
+        return val;
+      };
+
+      const normalizedResponsible = Array.isArray(record.responsible) 
+        ? record.responsible.map(normalizeValue)
+        : (record.responsible ? [normalizeValue(record.responsible)] : []);
+      
+      const normalizedCollaborators = Array.isArray(record.collaborators)
+        ? record.collaborators.map(normalizeValue)
+        : [];
+
       form.setFieldsValue({
         category: record.category,
         issueDescription: record.issueDescription,
-        responsible: Array.isArray(record.responsible) ? record.responsible : (record.responsible ? [record.responsible] : []),
-        collaborators: Array.isArray(record.collaborators) ? record.collaborators : [],
+        responsible: normalizedResponsible,
+        collaborators: normalizedCollaborators,
         actionPlan: record.actionPlan,
         plannedDueAt: record.plannedDueAt ? dayjs(record.plannedDueAt) : null,
         note: record.note,
@@ -147,11 +214,11 @@ export default function ImprovementEditModal({ open, record, onCancel, onSaved, 
 
       await axios.patch(`/api/improvements/${encodeURIComponent(String(record.improvementID || record.id))}`, patch);
 
-      api.success({ message: 'Cập nhật thành công', placement: 'bottomRight' });
+      api.success({ message: t.sys, description: t.updateSuccess, placement: 'bottomRight' });
       onSaved?.();
       onCancel?.();
     } catch (e) {
-      api.error({ message: 'Cập nhật thất bại', placement: 'bottomRight' });
+      api.error({ message: t.sys, description: t.updateFailed, placement: 'bottomRight' });
     }
   };
 
@@ -159,37 +226,44 @@ export default function ImprovementEditModal({ open, record, onCancel, onSaved, 
     <>
       {contextHolder}
       <Modal 
-        title={`Sửa cải thiện`} 
+        title={t.title} 
         open={open} 
         onCancel={onCancel} 
         onOk={handleOk} 
-        okText="Lưu"
+        okText={t.save}
+        cancelText={t.cancel}
         width={720}
         style={{ top: '70px' }}
         centered={false}
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="category" label="Hạng mục"><Input placeholder="Tên công việc" disabled /></Form.Item>
+          <Form.Item name="category" label={t.category}><Input placeholder={t.categoryPh} disabled /></Form.Item>
 
-          <Form.Item name="issueDescription" label="Nội dung cải thiện"><Input.TextArea rows={3} /></Form.Item>
+          <Form.Item 
+            name="issueDescription" 
+            label={t.issueDescription}
+            rules={[{ required: true, message: t.issueDescriptionRequired }]}
+          >
+            <Input.TextArea rows={3} />
+          </Form.Item>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <Form.Item name="responsible" label="Người phụ trách">
+            <Form.Item name="responsible" label={t.responsible}>
               <Select 
                 mode="multiple"
-                placeholder="Chọn người phụ trách" 
+                placeholder={t.responsiblePh} 
                 showSearch
                 filterOption={(input, option) =>
                   (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
                 }
-                options={createCollaboratorOptions()}
+                options={createSelectOptions()}
                 maxTagCount="responsive"
               />
             </Form.Item>
-            <Form.Item name="collaborators" label="Người phối hợp">
+            <Form.Item name="collaborators" label={t.collaborators}>
               <Select 
                 mode="tags"
-                placeholder="Nhập người phối hợp" 
+                placeholder={t.collaboratorsPh} 
                 showSearch
                 allowClear
                 filterOption={(input, option) =>
@@ -203,9 +277,9 @@ export default function ImprovementEditModal({ open, record, onCancel, onSaved, 
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <Form.Item name="improvementEventId" label="Loại sự kiện">
+            <Form.Item name="improvementEventId" label={t.improvementEvent}>
               <Select 
-                placeholder="Chọn loại sự kiện" 
+                placeholder={t.improvementEventPh} 
                 allowClear
                 showSearch
                 filterOption={(input, option) =>
@@ -219,13 +293,13 @@ export default function ImprovementEditModal({ open, record, onCancel, onSaved, 
                 ))}
               </Select>
             </Form.Item>
-            <Form.Item name="plannedDueAt" label="Thời gian dự kiến hoàn thành">
+            <Form.Item name="plannedDueAt" label={t.plannedDueAt}>
               <DatePicker showTime style={{ width: '100%' }} format="DD/MM/YYYY HH:mm" />
             </Form.Item>
           </div>
 
-          <Form.Item name="actionPlan" label="Hành động cải thiện"><Input.TextArea rows={3} /></Form.Item>
-          <Form.Item name="note" label="Ghi chú"><Input.TextArea rows={3} /></Form.Item>
+          <Form.Item name="actionPlan" label={t.actionPlan}><Input.TextArea rows={3} /></Form.Item>
+          <Form.Item name="note" label={t.note}><Input.TextArea rows={3} /></Form.Item>
         </Form>
       </Modal>
     </>

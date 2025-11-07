@@ -76,7 +76,11 @@ export default function SOPPermissionModal({ open, record, onCancel, onSaved, gl
           axios.get(`${base}/permissions`).catch(() => ({ data: {} })),
         ]);
         const groupList = groupRes.data || [];
-        const userList = userRes.data || [];
+        const userList = (userRes.data || []).filter(u => {
+          // Filter out users with ADMIN role
+          if (!u.roles || !Array.isArray(u.roles)) return true;
+          return !u.roles.some(r => r.name && r.name.toUpperCase() === 'ADMIN');
+        });
         setGroups(groupList);
         setUsers(userList);
         const existing = permRes.data || {};
@@ -222,6 +226,7 @@ export default function SOPPermissionModal({ open, record, onCancel, onSaved, gl
         </div>
         {(() => {
           const kw = (userSearch || '').trim().toLowerCase();
+          // Start with users that are not ADMIN (already filtered from API)
           let data = users;
           if (kw) {
             data = users.filter(u =>

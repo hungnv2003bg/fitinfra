@@ -15,7 +15,7 @@ const LOCATIONS = ["F01", "F02", "F03", "F04", "F05"];
 export default function ChecklistDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { nguoiDung } = useSelector(state => state.user);
+  const { nguoiDung, quyenList } = useSelector(state => state.user);
   const { lang } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState([]);
@@ -275,7 +275,18 @@ export default function ChecklistDetailPage() {
   };
 
   // Lock editing if an item has a completedAt older than 7 days
+  // ADMIN role can always edit, no restrictions
   const isEditLocked = (record) => {
+    // Check if user is ADMIN - ADMIN can always edit
+    const isAdmin = Array.isArray(quyenList) && quyenList.some(role => 
+      role === 'ADMIN' || role === 'ROLE_ADMIN'
+    );
+    
+    if (isAdmin) {
+      return false; // ADMIN is never locked
+    }
+    
+    // For non-ADMIN users (USER, MANAGER), check 7-day lock
     if (!record?.completedAt) return false;
     try {
       const completed = dayjs(record.completedAt);
@@ -322,7 +333,7 @@ export default function ChecklistDetailPage() {
     selectStatus: '请选择状态',
     uploadFileError: '上传文件错误',
     exportPrint: '导出/打印',
-    exportPDF: '导出PDF',
+    exportPDF: '打印PDF',
     exportExcel: '导出Excel'
   } : {
     back: 'Quay lại',
@@ -360,7 +371,7 @@ export default function ChecklistDetailPage() {
     selectStatus: 'Chọn trạng thái',
     uploadFileError: 'Lỗi upload file',
     exportPrint: 'Xuất/In',
-    exportPDF: 'Xuất PDF',
+    exportPDF: 'In PDF',
     exportExcel: 'Xuất Excel'
   };
 
@@ -393,15 +404,52 @@ export default function ChecklistDetailPage() {
           <meta charset="UTF-8">
           <title>${task?.taskName || t.header}</title>
           <style>
-            @media print {
-              @page { margin: 1cm; }
+            @page { 
+              margin: 0;
+              size: landscape;
             }
-            body { font-family: Arial, sans-serif; margin: 20px; }
-            h1 { text-align: center; margin-bottom: 20px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            th { background-color: #f2f2f2; font-weight: bold; }
-            tr:nth-child(even) { background-color: #f9f9f9; }
+            @media print {
+              /* Hide all browser-generated headers and footers */
+              html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+              }
+            }
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+            body { 
+              font-family: Arial, sans-serif; 
+              padding: 20px;
+            }
+            h1 { 
+              text-align: center; 
+              font-size: 28px;
+              font-weight: bold;
+              margin-bottom: 30px;
+              margin-top: 20px;
+              color: #000;
+            }
+            table { 
+              width: 100%; 
+              border-collapse: collapse;
+            }
+            th, td { 
+              border: 1px solid #000; 
+              padding: 8px; 
+              text-align: left;
+              font-size: 12px;
+            }
+            th { 
+              background-color: #f2f2f2; 
+              font-weight: bold;
+              text-align: center;
+            }
+            tr:nth-child(even) { 
+              background-color: #f9f9f9; 
+            }
           </style>
         </head>
         <body>
@@ -434,16 +482,10 @@ export default function ChecklistDetailPage() {
         printWindow.print();
         printWindow.close();
       }, 250);
-      
-      notification.success({
-        message: lang === 'vi' ? 'Hệ thống' : '系统',
-        description: lang === 'vi' ? 'Đã mở cửa sổ in PDF' : '已打开PDF打印窗口',
-        placement: 'bottomRight'
-      });
     } catch (error) {
       notification.error({
         message: lang === 'vi' ? 'Hệ thống' : '系统',
-        description: lang === 'vi' ? 'Lỗi khi xuất PDF: ' + error.message : '导出PDF错误: ' + error.message,
+        description: lang === 'vi' ? 'Lỗi khi in PDF: ' + error.message : '打印PDF错误: ' + error.message,
         placement: 'bottomRight'
       });
     }
@@ -509,12 +551,6 @@ export default function ChecklistDetailPage() {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      
-      notification.success({
-        message: lang === 'vi' ? 'Hệ thống' : '系统',
-        description: lang === 'vi' ? 'Đã xuất Excel thành công' : '已成功导出Excel',
-        placement: 'bottomRight'
-      });
     } catch (error) {
       notification.error({
         message: lang === 'vi' ? 'Hệ thống' : '系统',

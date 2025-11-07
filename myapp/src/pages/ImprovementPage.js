@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Table, Tag, Spin, Select, message, Button, Popconfirm, Input, Space, DatePicker, notification } from "antd";
-import { EyeOutlined, EditOutlined, DeleteOutlined, SearchOutlined, LineChartOutlined, PercentageOutlined } from "@ant-design/icons";
+import { Table, Tag, Spin, Select, message, Button, Popconfirm, Input, Space, DatePicker, notification, Dropdown } from "antd";
+import { EyeOutlined, EditOutlined, DeleteOutlined, SearchOutlined, LineChartOutlined, PercentageOutlined, DownloadOutlined, FilePdfOutlined, FileExcelOutlined } from "@ant-design/icons";
 import ImprovementDetailModal from "../components/modals/ImprovementDetailModal";
 import ImprovementEditModal from "../components/modals/ImprovementEditModal";
 import ImprovementCreateModal from "../components/modals/ImprovementCreateModal";
@@ -9,6 +9,7 @@ import { useLanguage } from "../contexts/LanguageContext";
 import { useSelector } from "react-redux";
 import axios from "../plugins/axios";
 import { formatDateOnlyVN, formatDateShortVN } from "../utils/dateUtils";
+import dayjs from "dayjs";
 
 export default function ImprovementPage() {
   const { lang } = useLanguage();
@@ -23,6 +24,7 @@ export default function ImprovementPage() {
   const [searchText, setSearchText] = useState("");
   const [reviewerFilter, setReviewerFilter] = useState(undefined);
   const [statusFilter, setStatusFilter] = useState(undefined);
+  const [sortOrder, setSortOrder] = useState(undefined); // undefined shows placeholder, "newest" or "oldest"
   const [dateRange, setDateRange] = useState([]);
   const [groups, setGroups] = useState([]);
   const [users, setUsers] = useState([]);
@@ -91,7 +93,7 @@ export default function ImprovementPage() {
 
 
     if (reviewerFilter) {
-      filtered = filtered.filter(item => getResponsibleDisplay(item.responsible) === reviewerFilter);
+      filtered = filtered.filter(item => item.responsible === reviewerFilter);
     }
 
 
@@ -122,11 +124,47 @@ export default function ImprovementPage() {
       filtered = initial;
     }
 
+    // Apply sorting (default to newest if undefined)
+    const appliedSortOrder = sortOrder || "newest";
+    if (appliedSortOrder === "newest") {
+      filtered = [...filtered].sort((a, b) => {
+        const dateA = new Date(a.createdAt || 0).getTime();
+        const dateB = new Date(b.createdAt || 0).getTime();
+        return dateB - dateA; // Newest first
+      });
+    } else if (appliedSortOrder === "oldest") {
+      filtered = [...filtered].sort((a, b) => {
+        const dateA = new Date(a.createdAt || 0).getTime();
+        const dateB = new Date(b.createdAt || 0).getTime();
+        return dateA - dateB; // Oldest first
+      });
+    }
+
     setFilteredRows(filtered);
-  }, [rows, searchText, reviewerFilter, statusFilter, dateRange, detailIdParam, qParam]);
+  }, [rows, searchText, reviewerFilter, statusFilter, dateRange, sortOrder, detailIdParam, qParam]);
 
 
-  const uniqueReviewers = [...new Set(rows.map(item => getResponsibleDisplay(item.responsible)).filter(Boolean))];
+  const uniqueReviewers = useMemo(() => {
+    const reviewerMap = new Map();
+    rows.forEach(item => {
+      const responsible = item.responsible;
+      if (!responsible) return;
+      
+      const displayInfo = getResponsibleDisplayWithManv(responsible);
+      if (displayInfo && displayInfo.label !== '-') {
+        // Format: "Name (EmployeeID)" if manv exists, otherwise just "Name"
+        const displayLabel = displayInfo.manv 
+          ? `${displayInfo.label} (${displayInfo.manv})` 
+          : displayInfo.label;
+        reviewerMap.set(responsible, { label: displayLabel, manv: displayInfo.manv });
+      }
+    });
+    return Array.from(reviewerMap.entries()).map(([value, info]) => ({ 
+      value, 
+      label: info.label,
+      manv: info.manv 
+    }));
+  }, [rows, groups, users]);
 
   // Helper functions để hiển thị tên group và user
   function getUserDisplayName(userId) {
@@ -147,21 +185,56 @@ export default function ImprovementPage() {
     return group ? group.name : `Group ${groupId}`;
   }
 
-  // Helper để parse và hiển thị responsible (có thể là group:ID hoặc user:ID)
+  // Helper để parse và hiển thị responsible (có thể là group:ID hoặc user:ID hoặc groupID hoặc userID)
   function getResponsibleDisplay(responsible) {
     if (!responsible) return '-';
     
     if (typeof responsible === 'string') {
-      if (responsible.startsWith('group:')) {
-        const groupId = parseInt(responsible.replace('group:', ''));
+      // Handle 'group:ID' or 'group:ID' format
+      if (responsible.startsWith('group:') || responsible.startsWith('group')) {
+        const groupId = parseInt(responsible.replace(/^group:?/, ''));
         return getGroupDisplayName(groupId);
-      } else if (responsible.startsWith('user:')) {
-        const userId = parseInt(responsible.replace('user:', ''));
+      }
+      // Handle 'user:ID' or 'userID' format
+      else if (responsible.startsWith('user:') || responsible.startsWith('user')) {
+        const userId = parseInt(responsible.replace(/^user:?/, ''));
         return getUserDisplayName(userId);
       }
       return responsible;
     }
     return responsible;
+  }
+
+  // Helper để lấy thông tin đầy đủ (tên + mã nhân viên) cho filter dropdown
+  function getResponsibleDisplayWithManv(responsible) {
+    if (!responsible) return { label: '-', manv: '' };
+    
+    if (typeof responsible === 'string') {
+      // Handle 'group:ID' or 'groupID' format
+      if (responsible.startsWith('group:') || responsible.startsWith('group')) {
+        const groupId = parseInt(responsible.replace(/^group:?/, ''));
+        const groupName = getGroupDisplayName(groupId);
+        return { label: groupName, manv: '' };
+      }
+      // Handle 'user:ID' or 'userID' format
+      else if (responsible.startsWith('user:') || responsible.startsWith('user')) {
+        const userId = parseInt(responsible.replace(/^user:?/, ''));
+        let user = null;
+        if (nguoiDung?.userID === userId) {
+          user = nguoiDung;
+        } else {
+          user = users.find(u => u.userID === userId);
+        }
+        if (user) {
+          const fullName = user.fullName || `User ${userId}`;
+          const manv = user.manv || '';
+          return { label: fullName, manv };
+        }
+        return { label: `User ${userId}`, manv: '' };
+      }
+      return { label: responsible, manv: '' };
+    }
+    return { label: responsible, manv: '' };
   }
 
   // Chuẩn hóa và hiển thị trạng thái
@@ -202,6 +275,7 @@ export default function ImprovementPage() {
   const labels = {
     vi: {
       header: "Improvement",
+      addNew: "Thêm mới",
       stTaskName: "Hạng mục",
       reviewer: "Người phụ trách",
       collaborators: "Người phối hợp",
@@ -209,7 +283,7 @@ export default function ImprovementPage() {
       reviewDate: "Thời gian dự kiến HT",
       improvement: "Nội dung cải thiện",
       status: "Trạng thái",
-      completed: "Hoàn thành",
+      completed: "Thời gian HT",
       progress: "Tiến độ",
       progressDetail: "Tệp đính kèm",
       actions: "Thao tác",
@@ -222,14 +296,21 @@ export default function ImprovementPage() {
       confirmDelete: "Xác nhận xóa",
       okDelete: "Xóa",
       cancel: "Hủy",
+      sys: "Hệ thống",
+      deleteSuccess: "Đã xóa",
+      deleteFailed: "Xóa thất bại",
       statusOptions: [
         { value: "PENDING", label: "Chưa thực hiện" },
         { value: "IN_PROGRESS", label: "Đang thực hiện" },
         { value: "DONE", label: "Hoàn thành" },
       ],
+      exportPrint: 'Xuất/In',
+      exportPDF: 'In PDF',
+      exportExcel: 'Xuất Excel'
     },
     zh: {
       header: "問題管理",
+      addNew: "新增",
       stTaskName: "任务名称",
       reviewer: "负责人",
       collaborators: "协同人",
@@ -250,20 +331,246 @@ export default function ImprovementPage() {
       confirmDelete: "确认删除",
       okDelete: "删除",
       cancel: "取消",
+      sys: "系统",
+      deleteSuccess: "已删除",
+      deleteFailed: "删除失败",
       statusOptions: [
         { value: "PENDING", label: "未开始" },
         { value: "IN_PROGRESS", label: "进行中" },
         { value: "DONE", label: "已完成" },
       ],
+      exportPrint: '导出/打印',
+      exportPDF: '打印PDF',
+      exportExcel: '导出Excel'
     },
   };
 
   const t = labels[lang];
 
+  const handleExportPDF = () => {
+    try {
+      // Tạo HTML table để in
+      const printWindow = window.open('', '_blank');
+      const tableData = filteredRows.map((row, index) => {
+        const stt = ((pagination.current - 1) * pagination.pageSize) + index + 1;
+        const statusDisplay = getStatusLabel(getStatusCode(row.status));
+        const responsibleDisplay = Array.isArray(row.responsible) 
+          ? row.responsible.map(r => getResponsibleDisplay(r)).join(', ')
+          : getResponsibleDisplay(row.responsible);
+        const collaboratorsDisplay = Array.isArray(row.collaborators)
+          ? row.collaborators.map(c => getResponsibleDisplay(c)).join(', ')
+          : '-';
+        return `
+          <tr>
+            <td style="text-align: center;">${stt}</td>
+            <td style="text-align: left;">${row.category || '-'}</td>
+            <td style="text-align: left;">${row.issueDescription || '-'}</td>
+            <td style="text-align: left;">${responsibleDisplay}</td>
+            <td style="text-align: left;">${collaboratorsDisplay}</td>
+            <td style="text-align: center;">${row.improvementEvent?.eventName || row.improvementEventName || '-'}</td>
+            <td style="text-align: left;">${formatDateShortVN(row.plannedDueAt)}</td>
+            <td style="text-align: left;">${row.completedAt ? formatDateShortVN(row.completedAt) : '-'}</td>
+            <td style="text-align: center;">${statusDisplay}</td>
+            <td style="text-align: center;">${row.progress != null ? row.progress + '%' : '-'}</td>
+          </tr>
+        `;
+      }).join('');
+
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>${lang === 'vi' ? 'Danh sách cải thiện' : '改善列表'}</title>
+          <style>
+            @page { 
+              margin: 0;
+              size: landscape;
+            }
+            @media print {
+              /* Hide all browser-generated headers and footers */
+              html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+              }
+            }
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+            body { 
+              font-family: Arial, sans-serif; 
+              padding: 20px;
+            }
+            h1 { 
+              text-align: center; 
+              font-size: 28px;
+              font-weight: bold;
+              margin-bottom: 30px;
+              margin-top: 20px;
+              color: #000;
+            }
+            table { 
+              width: 100%; 
+              border-collapse: collapse;
+            }
+            th, td { 
+              border: 1px solid #000; 
+              padding: 8px; 
+              text-align: left;
+              font-size: 12px;
+            }
+            th { 
+              background-color: #f2f2f2; 
+              font-weight: bold;
+              text-align: center;
+            }
+            tr:nth-child(even) { 
+              background-color: #f9f9f9; 
+            }
+          </style>
+        </head>
+        <body>
+          <h1>${lang === 'vi' ? 'Danh sách cải thiện' : '改善列表'}</h1>
+          <table>
+            <thead>
+              <tr>
+                <th>STT</th>
+                <th>${t.stTaskName}</th>
+                <th>${t.improvement}</th>
+                <th>${t.reviewer}</th>
+                <th>${t.collaborators}</th>
+                <th>${t.improvementEvent}</th>
+                <th>${t.reviewDate}</th>
+                <th>${t.completed}</th>
+                <th>${t.status}</th>
+                <th>${t.progress}</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tableData}
+            </tbody>
+          </table>
+        </body>
+        </html>
+      `;
+      
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+      }, 250);
+    } catch (error) {
+      notification.error({
+        message: t.sys,
+        description: (lang === 'vi' ? 'Lỗi khi in PDF: ' : '打印PDF错误: ') + error.message,
+        placement: 'bottomRight'
+      });
+    }
+  };
+
+  const handleExportExcel = () => {
+    try {
+      // Tạo CSV content (có thể mở bằng Excel)
+      const headers = [
+        'STT',
+        t.stTaskName,
+        t.improvement,
+        t.reviewer,
+        t.collaborators,
+        t.improvementEvent,
+        t.reviewDate,
+        t.completed,
+        t.status,
+        t.progress
+      ];
+
+      const csvRows = [
+        headers.join(','),
+        ...filteredRows.map((row, index) => {
+          const stt = ((pagination.current - 1) * pagination.pageSize) + index + 1;
+          const statusDisplay = getStatusLabel(getStatusCode(row.status));
+          const responsibleDisplay = Array.isArray(row.responsible) 
+            ? row.responsible.map(r => getResponsibleDisplay(r)).join('; ')
+            : getResponsibleDisplay(row.responsible);
+          const collaboratorsDisplay = Array.isArray(row.collaborators)
+            ? row.collaborators.map(c => getResponsibleDisplay(c)).join('; ')
+            : '-';
+          
+          // Escape commas and quotes in CSV
+          const escapeCSV = (str) => {
+            if (!str) return '';
+            const s = String(str);
+            if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+              return `"${s.replace(/"/g, '""')}`;
+            }
+            return s;
+          };
+
+          return [
+            stt,
+            escapeCSV(row.category || '-'),
+            escapeCSV(row.issueDescription || '-'),
+            escapeCSV(responsibleDisplay),
+            escapeCSV(collaboratorsDisplay),
+            escapeCSV(row.improvementEvent?.eventName || row.improvementEventName || '-'),
+            escapeCSV(formatDateShortVN(row.plannedDueAt)),
+            escapeCSV(row.completedAt ? formatDateShortVN(row.completedAt) : '-'),
+            escapeCSV(statusDisplay),
+            escapeCSV(row.progress != null ? row.progress + '%' : '-')
+          ].join(',');
+        })
+      ];
+
+      const csvContent = csvRows.join('\n');
+      
+      // Add BOM for UTF-8 Excel support
+      const BOM = '\uFEFF';
+      const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const fileName = `Improvement_${dayjs().format('YYYY-MM-DD_HH-mm-ss')}.csv`;
+      
+      link.href = url;
+      link.download = fileName;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      notification.error({
+        message: t.sys,
+        description: (lang === 'vi' ? 'Lỗi khi xuất Excel: ' : '导出Excel错误: ') + error.message,
+        placement: 'bottomRight'
+      });
+    }
+  };
+
   // Only ADMIN can delete; USER and MANAGER must not see delete button
   const isAdmin = Array.isArray(quyenList) && quyenList.some(role => 
     role === 'ADMIN' || role === 'ROLE_ADMIN'
   );
+
+  // Check if user can edit or update progress based on completion date and role
+  const canEditOrUpdateProgress = (record) => {
+    // ADMIN can always edit/update
+    if (isAdmin) return true;
+    
+    // If no completedAt date, allow editing
+    if (!record.completedAt) return true;
+    
+    // Check if completed more than 7 days ago
+    const completedDate = new Date(record.completedAt);
+    const now = new Date();
+    const daysDiff = Math.floor((now - completedDate) / (1000 * 60 * 60 * 24));
+    
+    // USER and MANAGER cannot edit if completed more than 7 days ago
+    return daysDiff <= 7;
+  };
 
   const columns = [
     {
@@ -375,7 +682,13 @@ export default function ImprovementPage() {
       width: 208,
       align: 'center',
       onHeaderCell: () => ({ style: { textAlign: 'center' } }),
-      render: (_, record) => (
+      render: (_, record) => {
+        const canEdit = canEditOrUpdateProgress(record);
+        const tooltipText = !canEdit 
+          ? (lang === 'vi' ? 'Đã quá 7 ngày kể từ Ngày hoàn thành - không thể chỉnh sửa' : '完成7天后不能编辑')
+          : '';
+        
+        return (
         <div style={{ display: 'flex', gap: 8 }}>
           <Button 
             icon={<EyeOutlined style={{ fontSize: '14px' }} />} 
@@ -387,14 +700,17 @@ export default function ImprovementPage() {
             type="default"
             icon={<PercentageOutlined style={{ fontSize: '14px' }} />}
             size="middle"
+            disabled={!canEdit}
             onClick={() => setProgressRecord(record)}
-            title={lang === 'vi' ? 'Cập nhật tiến độ' : '更新进度'}
+            title={!canEdit ? tooltipText : (lang === 'vi' ? 'Cập nhật tiến độ' : '更新进度')}
             style={{ minWidth: '36px', height: '36px' }}
           />
           <Button 
             icon={<EditOutlined style={{ fontSize: '14px' }} />} 
-            size="middle" 
-            onClick={() => setEditRecord(record)} 
+            size="middle"
+            disabled={!canEdit}
+            onClick={() => setEditRecord(record)}
+            title={!canEdit ? tooltipText : (lang === 'vi' ? 'Chỉnh sửa' : '编辑')}
             style={{ minWidth: '36px', height: '36px' }}
           />
           {isAdmin && (
@@ -406,15 +722,15 @@ export default function ImprovementPage() {
               try {
                 await axios.delete(`/api/improvements/${encodeURIComponent(String(record.improvementID || record.id))}`);
                 notification.success({
-                  message: 'Hệ thống',
-                  description: 'Đã xóa',
+                  message: t.sys,
+                  description: t.deleteSuccess,
                   placement: 'bottomRight'
                 });
                 fetchData();
               } catch {
                 notification.error({
-                  message: 'Hệ thống',
-                  description: 'Xóa thất bại',
+                  message: t.sys,
+                  description: t.deleteFailed,
                   placement: 'bottomRight'
                 });
               }
@@ -429,77 +745,100 @@ export default function ImprovementPage() {
           </Popconfirm>
           )}
         </div>
-      )
+      );
+      }
     }
   ];
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{
-            display: 'inline-flex',
-            width: 36,
-            height: 36,
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: '#fff7e6',
-            color: '#faad14',
-            borderRadius: 8
-          }}>
-            <LineChartOutlined />
-          </span>
-          <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>{lang === 'vi' ? 'Improvement' : t.header}</h2>
-        </div>
-        <Button type="primary" onClick={() => setCreateOpen(true)}>Thêm mới</Button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+        <span style={{
+          display: 'inline-flex',
+          width: 36,
+          height: 36,
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: '#fff7e6',
+          color: '#faad14',
+          borderRadius: 8
+        }}>
+          <LineChartOutlined />
+        </span>
+        <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>{lang === 'vi' ? 'Improvement' : t.header}</h2>
       </div>
 
       {}
       <div style={{ marginBottom: 16, padding: 12, background: '#fafafa', border: '1px solid #f0f0f0', borderRadius: 8 }}>
-        <Space wrap>
-          <Input
-            placeholder={t.searchPlaceholder}
-            prefix={<SearchOutlined />}
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            style={{ width: 300 }}
-            allowClear
-          />
-          <DatePicker.RangePicker
-            placeholder={t.dateRangePlaceholder}
-            value={dateRange}
-            onChange={(vals) => setDateRange(vals || [])}
-            style={{ width: 280 }}
-            format="DD/MM/YYYY"
-          />
-          <Select
-            placeholder={t.filterReviewer}
-            value={reviewerFilter}
-            onChange={setReviewerFilter}
-            style={{ width: 200 }}
-            allowClear
-          >
-            {uniqueReviewers.map(reviewer => (
-              <Select.Option key={reviewer} value={reviewer}>{reviewer}</Select.Option>
-            ))}
-          </Select>
-          <Select
-            placeholder={t.filterStatus}
-            value={statusFilter}
-            onChange={setStatusFilter}
-            style={{ width: 200 }}
-            allowClear
-          >
-            {labels.vi.statusOptions.map((opt, idx) => (
-              <Select.Option key={opt.value} value={opt.value}>
-                {opt.label} / {labels.zh.statusOptions[idx].label}
-              </Select.Option>
-            ))}
-          </Select>
-          <Button onClick={() => { setSearchText(""); setReviewerFilter(undefined); setStatusFilter(undefined); setDateRange([]); }}>
-            {t.clearFilters}
-          </Button>
-        </Space>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+          <Space wrap>
+            <Input
+              placeholder={t.searchPlaceholder}
+              prefix={<SearchOutlined />}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              style={{ width: 250 }}
+              allowClear
+            />
+            <DatePicker.RangePicker
+              placeholder={t.dateRangePlaceholder}
+              value={dateRange}
+              onChange={(vals) => setDateRange(vals || [])}
+              style={{ width: 240 }}
+              format="DD/MM/YYYY"
+            />
+            <Select
+              placeholder={t.filterStatus}
+              value={statusFilter}
+              onChange={setStatusFilter}
+              style={{ width: 160 }}
+              allowClear
+            >
+              {labels.vi.statusOptions.map((opt, idx) => (
+                <Select.Option key={opt.value} value={opt.value}>
+                  {opt.label} / {labels.zh.statusOptions[idx].label}
+                </Select.Option>
+              ))}
+            </Select>
+            <Select
+              placeholder={lang === 'vi' ? 'Sắp xếp' : '排序'}
+              value={sortOrder}
+              onChange={setSortOrder}
+              style={{ width: 130 }}
+              allowClear
+            >
+              <Select.Option value="newest">{lang === 'vi' ? 'Mới nhất' : '最新'}</Select.Option>
+              <Select.Option value="oldest">{lang === 'vi' ? 'Cũ nhất' : '最旧'}</Select.Option>
+            </Select>
+            <Button onClick={() => { setSearchText(""); setReviewerFilter(undefined); setStatusFilter(undefined); setDateRange([]); setSortOrder(undefined); }}>
+              {t.clearFilters}
+            </Button>
+            <Dropdown
+              menu={{
+                items: [
+                  {
+                    key: 'pdf',
+                    label: t.exportPDF,
+                    icon: <FilePdfOutlined />,
+                    onClick: () => handleExportPDF()
+                  },
+                  {
+                    key: 'excel',
+                    label: t.exportExcel,
+                    icon: <FileExcelOutlined />,
+                    onClick: () => handleExportExcel()
+                  }
+                ]
+              }}
+              trigger={['click']}
+            >
+              <Button icon={<DownloadOutlined />}>
+                {t.exportPrint}
+              </Button>
+            </Dropdown>
+          </Space>
+          <Button type="primary" onClick={() => setCreateOpen(true)}>{t.addNew}</Button>
+        </div>
       </div>
 
       <Spin spinning={loading}>

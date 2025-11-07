@@ -159,9 +159,10 @@ axiosIns.interceptors.response.use(
         const isBusiness403 = status === 403 && (reqMethod === 'delete' || reqMethod === 'put') && (/\/api\/sop-documents/.test(reqUrl));
         const isUserUpdate = reqMethod === 'put' && /\/api\/users\/\d+$/.test(reqUrl);
         const isRefreshEndpoint = reqUrl.includes('/api/auth/refresh');
+        const isLoginEndpoint = reqUrl.includes('/api/auth/dangnhap');
 
         // Try to refresh token on 401, except for refresh endpoint itself
-        if (status === 401 && !isRefreshEndpoint) {
+        if (status === 401 && !isRefreshEndpoint && !isLoginEndpoint) {
             try {
                 const newToken = await refreshAccessToken();
                 // Retry the original request with new token
@@ -170,6 +171,7 @@ axiosIns.interceptors.response.use(
                 return axiosIns(originalRequest);
             } catch (refreshError) {
                 // Refresh failed, logout user
+                console.log('Token refresh failed, logging out...');
                 clearAuthData();
                 store.dispatch(userSlice.actions.dangXuat());
                 window.location.href = '/login';
@@ -177,14 +179,21 @@ axiosIns.interceptors.response.use(
             }
         }
 
-        const shouldLogout = (status === 401 || (status === 403 && !isPolicyBlock && !isBusiness403)) && !isUserUpdate && !isRefreshEndpoint;
+        // Only logout for authentication errors, not other errors
+        // 401 on refresh endpoint means token is invalid
+        // 403 that's not a business rule means permission denied
+        const isAuthError = (status === 401 && isRefreshEndpoint) || 
+                           (status === 403 && !isPolicyBlock && !isBusiness403 && !isUserUpdate);
 
-        if (shouldLogout) {
+        if (isAuthError) {
+            console.log('Authentication error, logging out...');
             clearAuthData();
             store.dispatch(userSlice.actions.dangXuat());
-            return;
+            window.location.href = '/login';
+            return Promise.reject(error);
         }
 
+        // For all other errors (400, 404, 500, network errors, etc.), just reject without logout
         return Promise.reject(error);
     }
 );

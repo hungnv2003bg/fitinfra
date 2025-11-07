@@ -22,8 +22,8 @@ export default function ChecklistPage() {
   const [rows, setRows] = useState([]);
   const [filteredRows, setFilteredRows] = useState([]);
   const [searchText, setSearchText] = useState("");
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [groupFilter, setGroupFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState(undefined);
+  const [groupFilter, setGroupFilter] = useState(undefined);
   
   const [editRecord, setEditRecord] = useState(null);
   const [viewRecord, setViewRecord] = useState(null);
@@ -41,7 +41,7 @@ export default function ChecklistPage() {
     setLoading(true);
     try {
       const params = {};
-      if (groupFilter && groupFilter !== 'all') {
+      if (groupFilter && groupFilter !== 'all' && groupFilter !== undefined) {
         params.groupId = groupFilter;
       }
       const res = await axios.get("/api/checklists", { params });
@@ -98,7 +98,7 @@ export default function ChecklistPage() {
 
     // removed date range filtering per request
 
-    if (statusFilter !== 'all') {
+    if (statusFilter !== undefined && statusFilter !== 'all') {
       filtered = filtered.filter(item => (item.status || 'INACTIVE') === statusFilter);
     }
 
@@ -178,7 +178,7 @@ export default function ChecklistPage() {
       clearFilters: "Xóa bộ lọc",
       statusFilterPlaceholder: "Lọc theo trạng thái",
       allStatus: "Tất cả trạng thái",
-      filterByGroup: "Lọc theo nhóm thực hiện",
+      filterByGroup: "Lọc theo nhóm",
       allGroups: "Tất cả nhóm",
       categoryMap: {},
     },
@@ -217,7 +217,7 @@ export default function ChecklistPage() {
       clearFilters: "清除筛选",
       statusFilterPlaceholder: "按状态筛选",
       allStatus: "所有状态",
-      filterByGroup: "按执行组筛选",
+      filterByGroup: "按组筛选",
       allGroups: "所有组",
       categoryMap: {},
     },
@@ -467,13 +467,13 @@ export default function ChecklistPage() {
             {/* Date range picker removed per request */}
             <Input.Group compact>
               <Select
+                placeholder={t.filterByGroup}
                 value={groupFilter}
                 onChange={(v) => setGroupFilter(v)}
                 style={{ width: 180, height: 32 }}
                 dropdownMatchSelectWidth={false}
-                placeholder={t.filterByGroup}
+                allowClear
               >
-                <Option value="all">{t.allGroups}</Option>
                 {groups.map(g => (
                   <Option key={g.id} value={String(g.id)}>{g.name}</Option>
                 ))}
@@ -481,17 +481,18 @@ export default function ChecklistPage() {
             </Input.Group>
             <Input.Group compact>
               <Select
+                placeholder={t.statusFilterPlaceholder}
                 value={statusFilter}
                 onChange={(v) => setStatusFilter(v)}
                 style={{ width: 160, height: 32 }}
                 dropdownMatchSelectWidth={false}
+                allowClear
               >
-                <Option value="all">{t.allStatus}</Option>
                 <Option value="ACTIVE">{t.active}</Option>
                 <Option value="INACTIVE">{t.inactive}</Option>
               </Select>
             </Input.Group>
-            <Button onClick={() => { setSearchText(""); setStatusFilter('all'); setGroupFilter('all'); }}>
+            <Button onClick={() => { setSearchText(""); setStatusFilter(undefined); setGroupFilter(undefined); }}>
               {t.clearFilters}
             </Button>
           </Space>

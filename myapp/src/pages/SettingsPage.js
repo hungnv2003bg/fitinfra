@@ -194,7 +194,7 @@ export default function SettingsPage() {
     { key: "mailChecklistDetailManage", icon: <UserOutlined />, label: t.mailChecklistDetailManage },
     { key: "mailSignup", icon: <MailOutlined />, label: t.mailSignup },
     { key: "mailSignupManage", icon: <UserOutlined />, label: t.mailSignupManage },
-    { key: "mailImprovementDone", icon: <MailOutlined />, label: "Thông báo mail cải thiện" },
+    { key: "mailImprovementDone", icon: <MailOutlined />, label: "Thông báo nhận mail cải thiện" },
   ];
 
   const renderContent = () => {

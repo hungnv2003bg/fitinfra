@@ -6,6 +6,7 @@ import com.foxconn.sopchecklist.repository.ImprovementsRepository;
 import com.foxconn.sopchecklist.repository.ImprovementEventRepository;
 import com.foxconn.sopchecklist.service.TimeService;
 import com.foxconn.sopchecklist.service.MailImprovementDoneService;
+import com.foxconn.sopchecklist.service.MailImprovementCreationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,12 +23,14 @@ public class ImprovementsController {
     private final ImprovementEventRepository eventRepository;
     private final TimeService timeService;
     private final MailImprovementDoneService mailImprovementDoneService;
+    private final MailImprovementCreationService mailImprovementCreationService;
 
-    public ImprovementsController(ImprovementsRepository repository, ImprovementEventRepository eventRepository, TimeService timeService, MailImprovementDoneService mailImprovementDoneService) {
+    public ImprovementsController(ImprovementsRepository repository, ImprovementEventRepository eventRepository, TimeService timeService, MailImprovementDoneService mailImprovementDoneService, MailImprovementCreationService mailImprovementCreationService) {
         this.repository = repository;
         this.eventRepository = eventRepository;
         this.timeService = timeService;
         this.mailImprovementDoneService = mailImprovementDoneService;
+        this.mailImprovementCreationService = mailImprovementCreationService;
     }
 
     @GetMapping
@@ -101,6 +104,14 @@ public class ImprovementsController {
             body.setStatus("PENDING");
         }
         Improvements created = repository.save(body);
+        
+        // Gửi mail thông báo khi tạo mới cải thiện
+        try {
+            mailImprovementCreationService.queueDirectImprovementCreationMail(created);
+        } catch (Exception e) {
+            System.err.println("Failed to queue improvement creation mail for improvement " + created.getImprovementID() + ": " + e.getMessage());
+        }
+        
         return ResponseEntity.created(URI.create("/api/improvements/" + created.getImprovementID())).body(created);
     }
 

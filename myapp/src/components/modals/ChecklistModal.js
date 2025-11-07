@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Modal, Form, Input, DatePicker, InputNumber, Select, Cascader, notification } from "antd";
+import { Modal, Form, Input, DatePicker, InputNumber, Select, Cascader, notification, Row, Col } from "antd";
 import { useLanguage } from "../../contexts/LanguageContext";
 import dayjs from "dayjs";
 import axios from "../../plugins/axios";
@@ -223,6 +223,7 @@ export default function ChecklistModal({ open, onCancel, onAdded }) {
         okButtonProps={{ loading: isLoading }}
         okText={t.ok}
         cancelText={t.cancel}
+        width={720}
       >
         <Form form={form} layout="vertical">
           <Form.Item
@@ -301,108 +302,118 @@ export default function ChecklistModal({ open, onCancel, onAdded }) {
             />
           </Form.Item>
 
-          <Form.Item 
-            name="startAt" 
-            label={t.startAt}
-            rules={[{ required: true, message: lang === 'zh' ? '请选择开始时间' : 'Vui lòng chọn thời gian bắt đầu' }]}
-          >
-            <DatePicker 
-              showTime 
-              style={{ width: '100%' }} 
-              format="DD/MM/YYYY HH:mm"
-              placeholder={t.startAtPh}
-              getPopupContainer={(trigger) => trigger.parentElement}
-            />
-          </Form.Item>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item 
+                name="startAt" 
+                label={t.startAt}
+                rules={[{ required: true, message: lang === 'zh' ? '请选择开始时间' : 'Vui lòng chọn thời gian bắt đầu' }]}
+              >
+                <DatePicker 
+                  showTime 
+                  style={{ width: '100%' }} 
+                  format="DD/MM/YYYY HH:mm"
+                  placeholder={t.startAtPh}
+                  getPopupContainer={(trigger) => trigger.parentElement}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item 
+                label={t.repeat}
+                name="repeatId"
+                rules={[{ 
+                  required: true, 
+                  message: lang === 'zh' ? '请选择重复时间' : 'Vui lòng chọn thời gian lặp lại' 
+                }]}
+              >
+                <Cascader
+                  placeholder={t.repeatPh}
+                  options={repeatCascaderOptions}
+                  value={repeatCascaderValue}
+                  displayRender={(labels, selectedOptions) => {
+                    if (!selectedOptions || selectedOptions.length !== 2) return labels.join(" / ");
+                    const unit = selectedOptions[0]?.value;
+                    const numberLabel = selectedOptions[1]?.label;
+                    const unitLabel = lang === 'zh' ? { day: "天", week: "周", month: "月", year: "年" }[unit] || unit : { day: "ngày", week: "tuần", month: "tháng", year: "năm" }[unit] || unit;
+                    return `${numberLabel} ${unitLabel}`;
+                  }}
+                  onChange={(path) => {
+                    if (path && Array.isArray(path) && path.length === 2) {
+                      const id = path[1];
+                      form.setFieldsValue({ repeatId: id });
+                    } else {
+                      form.setFieldsValue({ repeatId: undefined });
+                    }
+                  }}
+                  allowClear
+                  changeOnSelect={false}
+                  style={{ width: '100%' }}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
 
-          <Form.Item 
-            label={t.repeat}
-            name="repeatId"
-            rules={[{ 
-              required: true, 
-              message: lang === 'zh' ? '请选择重复时间' : 'Vui lòng chọn thời gian lặp lại' 
-            }]}
-          >
-            <Cascader
-              placeholder={t.repeatPh}
-              options={repeatCascaderOptions}
-              value={repeatCascaderValue}
-              displayRender={(labels, selectedOptions) => {
-                if (!selectedOptions || selectedOptions.length !== 2) return labels.join(" / ");
-                const unit = selectedOptions[0]?.value;
-                const numberLabel = selectedOptions[1]?.label;
-                const unitLabel = lang === 'zh' ? { day: "天", week: "周", month: "月", year: "年" }[unit] || unit : { day: "ngày", week: "tuần", month: "tháng", year: "năm" }[unit] || unit;
-                return `${numberLabel} ${unitLabel}`;
-              }}
-              onChange={(path) => {
-                if (path && Array.isArray(path) && path.length === 2) {
-                  const id = path[1];
-                  form.setFieldsValue({ repeatId: id });
-                } else {
-                  form.setFieldsValue({ repeatId: undefined });
-                }
-              }}
-              allowClear
-              changeOnSelect={false}
-              style={{ width: '100%' }}
-            />
-          </Form.Item>
-
-          <Form.Item 
-            label={t.due}
-            name="dueInDays"
-            rules={[{ 
-              required: true, 
-              message: lang === 'zh' ? '请选择完成时限' : 'Vui lòng chọn thời gian cần hoàn thành' 
-            }]}
-          >
-            <Cascader
-              placeholder={t.duePh}
-              options={repeatCascaderOptions}
-              value={dueCascaderValue}
-              displayRender={(labels, selectedOptions) => {
-                if (!selectedOptions || selectedOptions.length !== 2) return labels.join(" / ");
-                const unit = selectedOptions[0]?.value;
-                const numberLabel = selectedOptions[1]?.label;
-                const unitLabel = lang === 'zh' 
-                  ? { day: "天", week: "周", month: "月", year: "年" }[unit] || unit 
-                  : { day: "ngày", week: "tuần", month: "tháng", year: "năm" }[unit] || unit;
-                return `${numberLabel} ${unitLabel}`;
-              }}
-              onChange={(path) => {
-                if (path && Array.isArray(path) && path.length === 2) {
-                  const selected = (timeRepeatOptions || []).find((r) => r.id === path[1]);
-                  const days = selected ? convertToDays(selected.unit, selected.number) : null;
-                  form.setFieldsValue({ dueInDays: days });
-                } else {
-                  form.setFieldsValue({ dueInDays: undefined });
-                }
-              }}
-              allowClear
-              style={{ width: '100%' }}
-            />
-          </Form.Item>
-
-          <Form.Item 
-            name="implementers" 
-            label={t.implementers}
-            rules={[{ 
-              required: true, 
-              message: lang === 'zh' ? '请选择执行人' : 'Vui lòng chọn người thực hiện' 
-            }]}
-          >
-            <Select
-              placeholder={t.implementersPh}
-              options={[
-                { label: lang === 'zh' ? '— 组 —' : '— Nhóm —', options: groupOptions },
-                { label: lang === 'zh' ? '— 账号 —' : '— Tài khoản —', options: userOptions },
-              ]}
-              showSearch
-              optionFilterProp="label"
-              allowClear
-              mode="multiple"
-            />
-          </Form.Item>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item 
+                label={t.due}
+                name="dueInDays"
+                rules={[{ 
+                  required: true, 
+                  message: lang === 'zh' ? '请选择完成时限' : 'Vui lòng chọn thời gian cần hoàn thành' 
+                }]}
+              >
+                <Cascader
+                  placeholder={t.duePh}
+                  options={repeatCascaderOptions}
+                  value={dueCascaderValue}
+                  displayRender={(labels, selectedOptions) => {
+                    if (!selectedOptions || selectedOptions.length !== 2) return labels.join(" / ");
+                    const unit = selectedOptions[0]?.value;
+                    const numberLabel = selectedOptions[1]?.label;
+                    const unitLabel = lang === 'zh' 
+                      ? { day: "天", week: "周", month: "月", year: "年" }[unit] || unit 
+                      : { day: "ngày", week: "tuần", month: "tháng", year: "năm" }[unit] || unit;
+                    return `${numberLabel} ${unitLabel}`;
+                  }}
+                  onChange={(path) => {
+                    if (path && Array.isArray(path) && path.length === 2) {
+                      const selected = (timeRepeatOptions || []).find((r) => r.id === path[1]);
+                      const days = selected ? convertToDays(selected.unit, selected.number) : null;
+                      form.setFieldsValue({ dueInDays: days });
+                    } else {
+                      form.setFieldsValue({ dueInDays: undefined });
+                    }
+                  }}
+                  allowClear
+                  style={{ width: '100%' }}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item 
+                name="implementers" 
+                label={t.implementers}
+                rules={[{ 
+                  required: true, 
+                  message: lang === 'zh' ? '请选择执行人' : 'Vui lòng chọn người thực hiện' 
+                }]}
+              >
+                <Select
+                  placeholder={t.implementersPh}
+                  options={[
+                    { label: lang === 'zh' ? '— 组 —' : '— Nhóm —', options: groupOptions },
+                    { label: lang === 'zh' ? '— 账号 —' : '— Tài khoản —', options: userOptions },
+                  ]}
+                  showSearch
+                  optionFilterProp="label"
+                  allowClear
+                  mode="multiple"
+                />
+              </Form.Item>
+            </Col>
+          </Row>
 
         </Form>
       </Modal>
