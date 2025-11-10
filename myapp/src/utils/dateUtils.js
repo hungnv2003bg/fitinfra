@@ -1,6 +1,3 @@
-
-
-
 export const formatDateVN = (dateValue, options = {}) => {
   if (!dateValue) return "-";
   
@@ -34,7 +31,6 @@ export const formatDateShortVN = (dateValue) => {
     const input = new Date(dateValue);
     if (isNaN(input.getTime())) return "-";
 
-    // Convert to Vietnam timezone reliably, then format as dd/MM/yyyy HH:mm
     const vnDate = new Date(
       input.toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" })
     );
@@ -52,7 +48,6 @@ export const formatDateShortVN = (dateValue) => {
   }
 };
 
-
 export const formatDateOnlyVN = (dateValue) => {
   return formatDateVN(dateValue, {
     year: 'numeric',
@@ -60,7 +55,6 @@ export const formatDateOnlyVN = (dateValue) => {
     day: '2-digit'
   });
 };
-
 
 export const getCurrentDateVN = () => {
   return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" }));

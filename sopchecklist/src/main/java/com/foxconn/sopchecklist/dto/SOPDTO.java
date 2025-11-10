@@ -19,8 +19,6 @@ public class SOPDTO {
     private LocalDateTime createdAt;
     private LocalDateTime lastEditedAt;
     private Integer documentCount;
-    
-    // User permissions for this specific SOP
     private Boolean userCanView;
     private Boolean userCanEdit;
     private Boolean userCanDelete;

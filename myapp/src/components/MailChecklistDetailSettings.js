@@ -47,7 +47,6 @@ export default function MailChecklistDetailSettings() {
     try {
       const res = await axios.get('/api/mail-recipients-checklist-detail');
       const list = Array.isArray(res.data) ? res.data : [];
-      // The API already returns CHECKLISTDONE recipients, so no need to filter
       const mailTo = list.filter(r => r && r.enabled && r.type === 'TO').map(r => r.email).join(', ');
       const mailCc = list.filter(r => r && r.enabled && r.type === 'CC').map(r => r.email).join(', ');
       const mailBcc = list.filter(r => r && r.enabled && r.type === 'BCC').map(r => r.email).join(', ');

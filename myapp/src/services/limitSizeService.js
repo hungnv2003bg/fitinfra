@@ -40,7 +40,6 @@ export const limitSizeService = {
       return response.data;
     } catch (error) {
       console.error('Error fetching file upload limit:', error);
-      // Fallback to default value if API fails
       return { maxSizeMb: 10, maxSizeBytes: 10485760 };
     }
   },

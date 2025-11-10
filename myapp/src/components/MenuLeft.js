@@ -18,13 +18,9 @@ function MenuLeft() {
   const { quyenList } = useSelector(state => state.user);
   const { lang } = useLanguage();
 
-
-
   const getSelectedKey = () => {
     const path = location.pathname;
     
-    
-
     if (path === "/" || path === "/dashboard") {
       return "/dashboard";
     }
@@ -43,24 +39,16 @@ function MenuLeft() {
     if (path.startsWith("/groups")) {
       return "/groups";
     }
-    
-
     return path || "/dashboard";
   };
 
   const selectedKey = getSelectedKey();
 
-
   const hasAccountAccess = () => {
     if (!quyenList || quyenList.length === 0) return false;
-    // Only Admin can see Account/Group
     return quyenList.some(role => role === "ADMIN" || role === "ROLE_ADMIN");
   };
-
-
-  // Checklist & Improvement: hiển thị cho mọi role nên không cần kiểm tra quyền
-
-
+  
   const isUserRole = () => {
     if (!quyenList || quyenList.length === 0) return false;
     return quyenList.some(role => role === "USER" || role === "ROLE_USER") && 

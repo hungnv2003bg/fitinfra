@@ -29,12 +29,11 @@ public class ImprovementProgress {
     private Improvements improvement;
 
     @Column(name = "progress_percent")
-    private Integer progressPercent; // 0 - 100
+    private Integer progressPercent; 
 
     @Column(name = "progress_detail", columnDefinition = "NVARCHAR(MAX)")
     private String progressDetail;
 
-  // 0: Chưa thực hiện, 1: Đang thực hiện, 2: Hoàn thành
   @Column(name = "status")
   private Integer status;
 

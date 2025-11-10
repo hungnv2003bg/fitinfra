@@ -63,11 +63,9 @@ public class SOPsController {
         result.put("userName", me.getFullName());
         result.put("groups", me.getGroups() != null ? me.getGroups().stream().map(g -> g.getId()).collect(java.util.stream.Collectors.toList()) : "No groups");
         
-        // Get all SOPs
         List<SOPs> allSops = sopsService.findAll();
         result.put("totalSops", allSops.size());
         
-        // Get user permissions
         List<SOPDocumentPermission> userPermissions = permissionRepository.findByUserId(me.getUserID().longValue());
         result.put("userPermissions", userPermissions.stream().map(p -> {
             Map<String, Object> perm = new HashMap<>();
@@ -80,7 +78,6 @@ public class SOPsController {
             return perm;
         }).collect(java.util.stream.Collectors.toList()));
         
-        // Check which SOPs user can view
         List<Map<String, Object>> accessibleSops = new ArrayList<>();
         java.util.Set<Long> groupIds = new java.util.HashSet<>();
         if (me.getGroups() != null && !me.getGroups().isEmpty()) {
@@ -90,13 +87,11 @@ public class SOPsController {
         for (SOPs sop : allSops) {
             List<SOPDocumentPermission> permissions = permissionRepository.findBySopId(sop.getId());
             boolean canView = permissions.stream().anyMatch(p -> {
-                // Check group-level permissions (only if user has groups)
                 boolean groupPermission = false;
                 if (!groupIds.isEmpty()) {
                     groupPermission = p.isView() && p.getGroupId() != null && groupIds.contains(p.getGroupId());
                 }
                 
-                // Check user-level permissions (always check regardless of groups)
                 boolean userPermission = p.isView() && p.getUserId() != null && p.getUserId().equals(me.getUserID().longValue());
                 
                 return groupPermission || userPermission;
@@ -162,28 +157,23 @@ public class SOPsController {
                     me.getGroups().forEach(g -> groupIds.add(g.getId()));
                 }
 
-                // Tính quyền view toàn cục một lần
                 boolean globalViewUser = globalPermissionRepository.findByUserId(me.getUserID().longValue()).stream().anyMatch(com.foxconn.sopchecklist.entity.SOPPermission::isView);
                 java.util.List<com.foxconn.sopchecklist.entity.SOPPermission> globalGroupPerms = groupIds.isEmpty() ? java.util.Collections.emptyList() : globalPermissionRepository.findByGroupIdIn(new java.util.ArrayList<>(groupIds));
                 boolean globalViewGroup = globalGroupPerms.stream().anyMatch(com.foxconn.sopchecklist.entity.SOPPermission::isView);
 
                 java.util.List<SOPs> allowed = sops.getContent().stream()
                     .filter(sop -> {
-                        // Kiểm tra quyền toàn cục trước
                         if (globalViewUser || globalViewGroup) {
                             return true;
                         }
                         
-                        // Nếu không có quyền toàn cục, kiểm tra quyền cụ thể theo SOP
                         java.util.List<SOPDocumentPermission> sopPermissions = permissionRepository.findBySopId(sop.getId());
                         return sopPermissions.stream().anyMatch(p -> {
-                            // Check group-level permissions (only if user has groups)
                             boolean groupPermission = false;
                             if (!groupIds.isEmpty()) {
                                 groupPermission = p.isView() && p.getGroupId() != null && groupIds.contains(p.getGroupId());
                             }
                             
-                            // Check user-level permissions (always check regardless of groups)
                             boolean userPermission = p.isView() && p.getUserId() != null && p.getUserId().equals(me.getUserID().longValue());
                             
                             return groupPermission || userPermission;
@@ -217,7 +207,6 @@ public class SOPsController {
                 dto.setDocumentCount(0);
             }
 
-            // Add user permissions for this specific SOP
             Users me = usersService.getCurrentAuthenticatedUser();
             if (me != null) {
                 boolean isAdmin = me.getRoles() != null && me.getRoles().stream().anyMatch(r -> {
@@ -236,7 +225,6 @@ public class SOPsController {
                         me.getGroups().forEach(g -> groupIds.add(g.getId()));
                     }
                     
-                    // Kiểm tra quyền toàn cục trước
                     boolean globalView = globalPermissionRepository.findByUserId(me.getUserID().longValue()).stream().anyMatch(com.foxconn.sopchecklist.entity.SOPPermission::isView);
                     boolean globalEdit = globalPermissionRepository.findByUserId(me.getUserID().longValue()).stream().anyMatch(com.foxconn.sopchecklist.entity.SOPPermission::isEdit);
                     boolean globalDelete = globalPermissionRepository.findByUserId(me.getUserID().longValue()).stream().anyMatch(com.foxconn.sopchecklist.entity.SOPPermission::isDel);
@@ -248,7 +236,6 @@ public class SOPsController {
                     globalDelete = globalDelete || globalGroupPerms.stream().anyMatch(com.foxconn.sopchecklist.entity.SOPPermission::isDel);
                     globalCreate = globalCreate || globalGroupPerms.stream().anyMatch(com.foxconn.sopchecklist.entity.SOPPermission::isCreate);
                     
-                    // Nếu không có quyền toàn cục, kiểm tra quyền cụ thể theo SOP
                     boolean sopView = false, sopEdit = false, sopDelete = false, sopCreate = false;
                     if (!globalView || !globalEdit || !globalDelete || !globalCreate) {
                         java.util.List<SOPDocumentPermission> sopPermissions = permissionRepository.findBySopId(sop.getId());
@@ -325,19 +312,16 @@ public class SOPsController {
 				java.util.List<SOPDocumentPermission> permissions = permissionRepository.findBySopId(id);
 				boolean hasPermission = permissions.stream()
 					.anyMatch(p -> {
-						// Check group-level permissions (only if user has groups)
 						boolean groupPermission = false;
 						if (!groupIds.isEmpty()) {
 							groupPermission = p.isView() && p.getGroupId() != null && groupIds.contains(p.getGroupId());
 						}
 						
-						// Check user-level permissions (always check regardless of groups)
 						boolean userPermission = p.isView() && p.getUserId() != null && p.getUserId().equals(me.getUserID().longValue());
 						
 						return groupPermission || userPermission;
 					});
 
-				// Nếu không có quyền theo SOP/document, kiểm tra quyền toàn cục
 				if (!hasPermission) {
 					boolean globalViewUser = globalPermissionRepository.findByUserId(me.getUserID().longValue()).stream().anyMatch(com.foxconn.sopchecklist.entity.SOPPermission::isView);
 					java.util.List<com.foxconn.sopchecklist.entity.SOPPermission> globalGroupPerms = groupIds.isEmpty() ? java.util.Collections.emptyList() : globalPermissionRepository.findByGroupIdIn(new java.util.ArrayList<>(groupIds));
@@ -395,32 +379,26 @@ public class SOPsController {
                     
 
                     documents = documents.stream().filter(doc -> {
-                        // First check if user has permission to view this specific document
                         boolean hasDocPermission = permissionRepository.findByDocumentId(doc.getDocumentID()).stream()
                             .anyMatch(p -> {
-                                // Check group-level permissions (only if user has groups)
                                 boolean groupPermission = false;
                                 if (!groupIds.isEmpty()) {
                                     groupPermission = p.isView() && p.getGroupId() != null && groupIds.contains(p.getGroupId());
                                 }
                                 
-                                // Check user-level permissions (always check regardless of groups)
                                 boolean userPermission = p.isView() && p.getUserId() != null && p.getUserId().equals(me.getUserID().longValue());
                                 
                                 return groupPermission || userPermission;
                             });
                         
-                        // If no specific document permission, check if user has permission to view the SOP
                         if (!hasDocPermission) {
                             hasDocPermission = permissionRepository.findBySopId(id).stream()
                                 .anyMatch(p -> {
-                                    // Check group-level permissions (only if user has groups)
                                     boolean groupPermission = false;
                                     if (!groupIds.isEmpty()) {
                                         groupPermission = p.isView() && p.getGroupId() != null && groupIds.contains(p.getGroupId());
                                     }
                                     
-                                    // Check user-level permissions (always check regardless of groups)
                                     boolean userPermission = p.isView() && p.getUserId() != null && p.getUserId().equals(me.getUserID().longValue());
                                     
                                     return groupPermission || userPermission;

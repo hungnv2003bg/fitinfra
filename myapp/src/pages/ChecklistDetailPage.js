@@ -37,11 +37,9 @@ export default function ChecklistDetailPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      // Check if this is a specific checklist detail ID (from email link)
       const isDetailId = window.location.pathname.includes('/checklist-detail/');
       
       if (isDetailId) {
-        // Fetch specific checklist detail by ID
         const res = await axios.get(`/api/checklist-details/${id}`);
         const detail = res.data;
         
@@ -64,7 +62,6 @@ export default function ChecklistDetailPage() {
           setRows([]);
         }
       } else {
-        // Original logic for checklist parent ID
         const params = { parentId: String(id) };
         if (statusFilter) params.status = statusFilter;
         if (groupFilter) params.groupId = groupFilter;
@@ -73,7 +70,6 @@ export default function ChecklistDetailPage() {
         const data = res.data;
         const items = Array.isArray(data) ? data : [];
         
-        // Hiển thị tất cả các checklist details
         const normalizedItems = items.map(item => ({
           ...item,
           createdAt: item.createdAt || item.created_at || null,
@@ -154,7 +150,6 @@ export default function ChecklistDetailPage() {
       }
     })();
 
-    // fetch groups and users for implementer display
     (async () => {
       try {
         const [groupsRes, usersRes] = await Promise.all([
@@ -222,7 +217,6 @@ export default function ChecklistDetailPage() {
         return (u?.fullName || u?.manv || (lang === 'vi' ? `User ${id}` : `用户 ${id}`));
       }
     }
-    // fallback: maybe already name
     return String(implementer);
   };
 
@@ -274,19 +268,15 @@ export default function ChecklistDetailPage() {
     }
   };
 
-  // Lock editing if an item has a completedAt older than 7 days
-  // ADMIN role can always edit, no restrictions
   const isEditLocked = (record) => {
-    // Check if user is ADMIN - ADMIN can always edit
     const isAdmin = Array.isArray(quyenList) && quyenList.some(role => 
       role === 'ADMIN' || role === 'ROLE_ADMIN'
     );
     
     if (isAdmin) {
-      return false; // ADMIN is never locked
+      return false; 
     }
     
-    // For non-ADMIN users (USER, MANAGER), check 7-day lock
     if (!record?.completedAt) return false;
     try {
       const completed = dayjs(record.completedAt);
@@ -377,7 +367,6 @@ export default function ChecklistDetailPage() {
 
   const handleExportPDF = () => {
     try {
-      // Tạo HTML table để in
       const printWindow = window.open('', '_blank');
       const tableData = rows.map((row, index) => {
         const stt = ((pagination.current - 1) * pagination.pageSize) + index + 1;
@@ -493,7 +482,6 @@ export default function ChecklistDetailPage() {
 
   const handleExportExcel = () => {
     try {
-      // Tạo CSV content (có thể mở bằng Excel)
       const headers = [
         t.stt,
         t.taskName,
@@ -537,7 +525,6 @@ export default function ChecklistDetailPage() {
 
       const csvContent = csvRows.join('\n');
       
-      // Add BOM for UTF-8 Excel support
       const BOM = '\uFEFF';
       const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
@@ -776,7 +763,6 @@ export default function ChecklistDetailPage() {
               lastEditedBy: nguoiDung?.userID,
             };
 
-            // Gửi danh sách file đầy đủ (file cũ còn giữ + file mới thêm)
             const existing = Array.isArray(existingFiles) ? existingFiles.map(f => ({
               filePath: f.filePath,
               fileName: f.fileName,
@@ -784,7 +770,6 @@ export default function ChecklistDetailPage() {
               fileSize: f.fileSize,
             })) : [];
             const allFiles = [...existing, ...newUploadedFiles];
-            // Luôn gửi trường files để backend biết cần xóa file nào
             updateData.files = allFiles;
             
             await axios.patch(`/api/checklist-details/${encodeURIComponent(String(editStatusRecord.id))}`, updateData);
@@ -798,7 +783,6 @@ export default function ChecklistDetailPage() {
             setExistingFiles([]);
             fetchData();
           } catch (e) {
-            // ignore if validation error
             if (e?.response) {
               notification.error({ message: lang === 'vi' ? 'Hệ thống' : '系统', description: t.updateFailed, placement: 'bottomRight' });
             }
@@ -854,7 +838,7 @@ export default function ChecklistDetailPage() {
                   notification.error({ message: lang === 'vi' ? 'Hệ thống' : '系统', description: t.fileTooLarge, placement: 'bottomRight' });
                   return false;
                 }
-                return false; // prevent auto upload; we manage list in onChange
+                return false; 
               }}
               onChange={async (info) => {
                 const { fileList } = info;
@@ -909,7 +893,31 @@ export default function ChecklistDetailPage() {
           </Form.Item>
 
           <Form.Item name="abnormalInfo" label={t.abnormal}>
-            <Input.TextArea rows={3} placeholder={t.abnormalPh} />
+            {editStatusRecord?.hasCompletedImprovement && (
+              <div style={{ 
+                marginBottom: 8, 
+                padding: '8px 12px', 
+                backgroundColor: '#f6ffed', 
+                border: '1px solid #b7eb8f', 
+                borderRadius: 4,
+                color: '#52c41a',
+                fontSize: '13px',
+                fontWeight: 500
+              }}>
+                ✓ {lang === 'vi' ? 'Bất thường đã được xử lý' : '异常已处理'}
+              </div>
+            )}
+            <Input.TextArea 
+              rows={3} 
+              placeholder={t.abnormalPh} 
+              disabled={editStatusRecord?.hasCompletedImprovement}
+              style={editStatusRecord?.hasCompletedImprovement ? { 
+                backgroundColor: '#f5f5f5', 
+                cursor: 'not-allowed',
+                color: '#000000d9',
+                WebkitTextFillColor: '#000000d9'
+              } : {}}
+            />
           </Form.Item>
         </Form>
       </Modal>

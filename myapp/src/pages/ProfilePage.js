@@ -136,7 +136,6 @@ export default function ProfilePage() {
     setValidationError("");
   };
 
-
   const validateInput = (field, value) => {
     if (field === 'fullName') {
       if (value.trim().length === 0) {
@@ -169,12 +168,10 @@ export default function ProfilePage() {
     return "";
   };
 
-
   const handleInputChange = (e) => {
     const newValue = e.target.value;
     setEditValue(newValue);
     
-
     const error = validateInput(editingField, newValue);
     setValidationError(error);
   };
@@ -206,7 +203,6 @@ export default function ProfilePage() {
       return;
     }
 
-
     setLoading(true);
     try {
 
@@ -222,20 +218,13 @@ export default function ProfilePage() {
         status: nguoiDung.status || 'ACTIVE'
       };
       
-      
       const response = await axios.put(`/api/users/${nguoiDung.userID}`, requestPayload);
-      
-      
 
       const updatedUser = response.data || { ...nguoiDung, ...updateData };
-      
-      
 
       dispatch(userSlice.actions.capNhatProfile(updatedUser));
       
-
       localStorage.setItem("user", JSON.stringify(updatedUser));
-      
       
       notification.success({
         message: lang === 'vi' ? 'Hệ thống' : '系统',
@@ -247,7 +236,6 @@ export default function ProfilePage() {
       
     } catch (error) {
       
-
       if (error.response && error.response.data && error.response.data.error) {
         const errorData = error.response.data;
         

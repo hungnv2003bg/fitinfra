@@ -28,7 +28,7 @@ export default function SOPTable({ refreshSignal, category, onAddNew, addNewText
   const [openGlobalPerm, setOpenGlobalPerm] = useState(false);
   const [searchText, setSearchText] = useState("");
   
-  const [sortOrder, setSortOrder] = useState(undefined); // "oldest", "newest" hoặc undefined
+  const [sortOrder, setSortOrder] = useState(undefined);
   const [userPermissions, setUserPermissions] = useState({});
   const [pagination, setPagination] = useState({
     current: 1,
@@ -60,7 +60,6 @@ export default function SOPTable({ refreshSignal, category, onAddNew, addNewText
       role === "USER" || role === "MANAGER" || role === "ROLE_USER" || role === "ROLE_MANAGER"
     );
   };
-
 
   const fetchUserPermissions = useCallback(async () => {
     try {
@@ -141,7 +140,6 @@ export default function SOPTable({ refreshSignal, category, onAddNew, addNewText
     if (category) {
       return userPermissions.edit === true;
     } else {
-      // Danh sách SOP: CHỈ dùng quyền toàn cục, không dùng quyền theo SOP
       return userPermissions.edit === true;
     }
   };
@@ -151,7 +149,6 @@ export default function SOPTable({ refreshSignal, category, onAddNew, addNewText
     if (category) {
       return userPermissions.delete === true;
     } else {
-      // Danh sách SOP: CHỈ dùng quyền toàn cục, không dùng quyền theo SOP
       return userPermissions.delete === true;
     }
   };
@@ -225,7 +222,6 @@ export default function SOPTable({ refreshSignal, category, onAddNew, addNewText
           data = [];
         }
         
-        // Sắp xếp theo cập nhật gần nhất, nếu không có thì theo ngày tạo
         data.sort((a, b) => {
           const aUpdateTime = a.lastUpdatedAt ? new Date(a.lastUpdatedAt) : null;
           const bUpdateTime = b.lastUpdatedAt ? new Date(b.lastUpdatedAt) : null;
@@ -234,24 +230,19 @@ export default function SOPTable({ refreshSignal, category, onAddNew, addNewText
           
           let comparison = 0;
           
-          // Nếu cả hai đều có cập nhật, sắp xếp theo cập nhật
           if (aUpdateTime && bUpdateTime) {
             comparison = aUpdateTime - bUpdateTime;
           }
-          // Nếu chỉ a có cập nhật, a lên trên
           else if (aUpdateTime && !bUpdateTime) {
             comparison = -1;
           }
-          // Nếu chỉ b có cập nhật, b lên trên
           else if (!aUpdateTime && bUpdateTime) {
             comparison = 1;
           }
-          // Nếu cả hai đều không có cập nhật, sắp xếp theo ngày tạo
           else {
             comparison = aCreateTime - bCreateTime;
           }
           
-          // Áp dụng thứ tự sắp xếp được chọn
           return sortOrder === "newest" ? -comparison : comparison;
         });
         
@@ -273,7 +264,6 @@ export default function SOPTable({ refreshSignal, category, onAddNew, addNewText
         });
         const data = Array.isArray(res.data) ? res.data : (res.data && Array.isArray(res.data.content) ? res.data.content : []);
         
-        // Sắp xếp theo cập nhật gần nhất, nếu không có thì theo ngày tạo
         data.sort((a, b) => {
           const aUpdateTime = a.lastUpdatedAt ? new Date(a.lastUpdatedAt) : null;
           const bUpdateTime = b.lastUpdatedAt ? new Date(b.lastUpdatedAt) : null;
@@ -282,28 +272,22 @@ export default function SOPTable({ refreshSignal, category, onAddNew, addNewText
           
           let comparison = 0;
           
-          // Nếu cả hai đều có cập nhật, sắp xếp theo cập nhật
           if (aUpdateTime && bUpdateTime) {
             comparison = aUpdateTime - bUpdateTime;
           }
-          // Nếu chỉ a có cập nhật, a lên trên
           else if (aUpdateTime && !bUpdateTime) {
             comparison = -1;
           }
-          // Nếu chỉ b có cập nhật, b lên trên
           else if (!aUpdateTime && bUpdateTime) {
             comparison = 1;
           }
-          // Nếu cả hai đều không có cập nhật, sắp xếp theo ngày tạo
           else {
             comparison = aCreateTime - bCreateTime;
           }
           
-          // Áp dụng thứ tự sắp xếp được chọn
           return sortOrder === "newest" ? -comparison : comparison;
         });
         
-        // Tin tưởng vào kết quả đã được backend lọc theo visibleOnly (đã bao gồm quyền toàn cục)
         const dataWithPerm = data;
         setSops(dataWithPerm);
         setFilteredSops(dataWithPerm);
@@ -367,7 +351,6 @@ export default function SOPTable({ refreshSignal, category, onAddNew, addNewText
           });
         }
       } else {
-        // Pre-check: do not allow deleting SOP when it still has documents
         try {
           const docsRes = await axios.get(`/api/sops/${encodeURIComponent(String(id))}/documents`, { params: { _t: Date.now() } });
           const docs = Array.isArray(docsRes.data) ? docsRes.data : [];
@@ -377,10 +360,9 @@ export default function SOPTable({ refreshSignal, category, onAddNew, addNewText
               description: lang === 'zh' ? '请先删除 SOPs 详情' : 'Vui lòng xóa SOPs chi tiết trước',
               placement: 'bottomRight'
             });
-            return; // stop deletion
+            return;
           }
         } catch (e) {
-          // If check fails, proceed cautiously to backend delete
         }
         const response = await axios.delete(`/api/sops/${encodeURIComponent(String(id))}`);
         const data = response.data;
@@ -407,7 +389,6 @@ export default function SOPTable({ refreshSignal, category, onAddNew, addNewText
       const errorData = err.response?.data;
       let errorMsg = errorData?.error || "Không thể xóa. Vui lòng thử lại!";
       
-      // Check if this is a business rule error (not a system error)
       const isBusinessRuleError = errorMsg.includes('Vui lòng xóa file trước khi xóa');
       
       if (lang === 'zh') {
@@ -419,7 +400,6 @@ export default function SOPTable({ refreshSignal, category, onAddNew, addNewText
         }
       }
 
-      // Show error color for both business rule and system errors
       if (isBusinessRuleError) {
         notification.error({ message: lang === 'zh' ? '系统' : 'Hệ thống', description: errorMsg, placement: 'bottomRight' });
       } else {
@@ -435,7 +415,6 @@ export default function SOPTable({ refreshSignal, category, onAddNew, addNewText
     fetchData();
   }, [fetchData, refreshSignal]);
 
-  // Trigger re-sorting when sortOrder changes
   useEffect(() => {
     if (sops.length > 0 && sortOrder !== undefined) {
       const sorted = [...sops].sort((a, b) => {
@@ -446,24 +425,19 @@ export default function SOPTable({ refreshSignal, category, onAddNew, addNewText
         
         let comparison = 0;
         
-        // Nếu cả hai đều có cập nhật, sắp xếp theo cập nhật
         if (aUpdateTime && bUpdateTime) {
           comparison = aUpdateTime - bUpdateTime;
         }
-        // Nếu chỉ a có cập nhật, a lên trên
         else if (aUpdateTime && !bUpdateTime) {
           comparison = -1;
         }
-        // Nếu chỉ b có cập nhật, b lên trên
         else if (!aUpdateTime && bUpdateTime) {
           comparison = 1;
         }
-        // Nếu cả hai đều không có cập nhật, sắp xếp theo ngày tạo
         else {
           comparison = aCreateTime - bCreateTime;
         }
         
-        // Áp dụng thứ tự sắp xếp được chọn
         return sortOrder === "newest" ? -comparison : comparison;
       });
       
@@ -472,7 +446,6 @@ export default function SOPTable({ refreshSignal, category, onAddNew, addNewText
     }
   }, [sortOrder]);
 
-  // When a document id is provided, filter table to just that document and highlight it
   useEffect(() => {
     if (!category || !initialOpenDocumentId || didFilterByParam) return;
     const idNum = Number(initialOpenDocumentId);
@@ -489,7 +462,6 @@ export default function SOPTable({ refreshSignal, category, onAddNew, addNewText
   useEffect(() => {
     let filtered = sops;
 
-    // If deep-linked to a specific document, force show only that row until user clears filters
     if (category && didFilterByParam && highlightDocId) {
       filtered = (sops || []).filter(item => Number(item.documentID) === Number(highlightDocId));
     } else {
@@ -503,7 +475,6 @@ export default function SOPTable({ refreshSignal, category, onAddNew, addNewText
       
     }
 
-    // Sắp xếp kết quả filter theo cập nhật gần nhất, nếu không có thì theo ngày tạo (cũ nhất lên trên)
     filtered.sort((a, b) => {
       const aUpdateTime = a.lastUpdatedAt ? new Date(a.lastUpdatedAt) : null;
       const bUpdateTime = b.lastUpdatedAt ? new Date(b.lastUpdatedAt) : null;
@@ -512,24 +483,19 @@ export default function SOPTable({ refreshSignal, category, onAddNew, addNewText
       
       let comparison = 0;
       
-      // Nếu cả hai đều có cập nhật, sắp xếp theo cập nhật
       if (aUpdateTime && bUpdateTime) {
         comparison = aUpdateTime - bUpdateTime;
       }
-      // Nếu chỉ a có cập nhật, a lên trên
       else if (aUpdateTime && !bUpdateTime) {
         comparison = -1;
       }
-      // Nếu chỉ b có cập nhật, b lên trên
       else if (!aUpdateTime && bUpdateTime) {
         comparison = 1;
       }
-      // Nếu cả hai đều không có cập nhật, sắp xếp theo ngày tạo
       else {
         comparison = aCreateTime - bCreateTime;
       }
       
-      // Áp dụng thứ tự sắp xếp được chọn (mặc định là cũ nhất lên trên)
       return sortOrder === "newest" ? -comparison : comparison;
     });
 
@@ -702,7 +668,6 @@ export default function SOPTable({ refreshSignal, category, onAddNew, addNewText
         const itemId = category ? record.documentID : record.id;
         const itemName = category ? record.title : record.name;
         
-        // Hiển thị theo phân quyền thay vì cứng theo vai trò
         return (
           <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
             {category && (

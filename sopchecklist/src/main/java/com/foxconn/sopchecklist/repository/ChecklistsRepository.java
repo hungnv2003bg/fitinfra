@@ -8,11 +8,6 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 
 public interface ChecklistsRepository extends JpaRepository<Checklists, Long> {
-
-    /**
-     * Find checklists whose implementers include the given group directly (group:ID)
-     * or any users that belong to that group (user:USER_ID).
-     */
     @Query(value = "\n" +
             "SELECT DISTINCT c.*\n" +
             "FROM Checklists c\n" +

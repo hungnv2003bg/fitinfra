@@ -102,10 +102,8 @@ function Register({ onSuccess }) {
                 openNotification("error", t.authError, t.passwordMismatch);
                 return;
             }
-
             setIsLoading(true);
-
-         
+        
             const response = await useLoginStore.actions.dangKy({
                 fullName: values.fullName,
                 email: values.email,

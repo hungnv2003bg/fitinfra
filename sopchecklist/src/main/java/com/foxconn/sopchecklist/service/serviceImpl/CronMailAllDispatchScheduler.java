@@ -38,8 +38,8 @@ public class CronMailAllDispatchScheduler {
     @Value("${mail.spExec:EXEC dbo.sp_MailWaiting_ITSystem_Insert @MailTo=?, @MailCC=?, @MailBCC=?, @Subject=?, @Body=?}")
     private String spExec;
 
-    // Run every 30 seconds
-    @Scheduled(fixedDelay = 30000)
+    // Run every 5 minutes
+    @Scheduled(fixedDelay = 300000)
     public void dispatchPendingMails() {
         dispatchOnce();
     }

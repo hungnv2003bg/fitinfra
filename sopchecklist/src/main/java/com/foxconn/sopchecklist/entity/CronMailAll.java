@@ -8,10 +8,7 @@ import lombok.Setter;
 import javax.persistence.*;
 import java.time.LocalDateTime;
 
-/**
- * Bảng hàng đợi mail chung cho tất cả các loại.
- * Có thể dùng cho SIGNUP, SOP, CHECKLISTDONE, etc.
- */
+
 @Entity
 @Table(name = "cron_mail_all")
 @Getter
@@ -58,7 +55,6 @@ public class CronMailAll {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
-    // Reference ID for the related entity (e.g., user_id, sop_id, etc.)
     @Column(name = "reference_id")
     private Long referenceId;
 }

@@ -28,7 +28,6 @@ public class ImprovementUploadController {
     @Value("${storage.use-ftp:false}")
     private boolean useFtp;
 
-    // FTP cấu hình cho improvement upload
     @Value("${ftp.host:}")
     private String ftpHost;
 
@@ -98,7 +97,6 @@ public class ImprovementUploadController {
             ftp.enterLocalPassiveMode();
             ftp.setFileType(FTP.BINARY_FILE_TYPE);
             
-            // Di chuyển đến thư mục improvement upload
             if (!ftp.changeWorkingDirectory(ftpImprovementUploadDir)) {
                 logger.warn("Cannot change to improvement upload directory: {}, creating it", ftpImprovementUploadDir);
                 if (!ftp.makeDirectory(ftpImprovementUploadDir)) {
@@ -109,7 +107,6 @@ public class ImprovementUploadController {
                 }
             }
             
-            // Tạo thư mục con nếu chưa có
             if (!ftp.changeWorkingDirectory(folderName)) {
                 if (!ftp.makeDirectory(folderName)) {
                     throw new Exception("Cannot create folder: " + folderName);
@@ -119,13 +116,11 @@ public class ImprovementUploadController {
                 }
             }
             
-            // Upload file
             boolean success = ftp.storeFile(file.getOriginalFilename(), file.getInputStream());
             if (!success) {
                 throw new Exception("Cannot store file: " + file.getOriginalFilename());
             }
             
-            // Tạo URL path
             String url = "/files/" + ftpImprovementUploadDir + "/" + folderName + "/" + file.getOriginalFilename();
             logger.info("Successfully uploaded improvement file: {}", url);
             
@@ -154,7 +149,6 @@ public class ImprovementUploadController {
             ftp.enterLocalPassiveMode();
             ftp.setFileType(FTP.BINARY_FILE_TYPE);
             
-            // Di chuyển đến thư mục improvement upload
             if (!ftp.changeWorkingDirectory(ftpImprovementUploadDir)) {
                 logger.error("Cannot change to improvement upload directory: {}", ftpImprovementUploadDir);
                 return ResponseEntity.notFound().build();

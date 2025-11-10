@@ -11,7 +11,6 @@ export default function ImprovementDetailModal({ open, record, onCancel, groups 
   
   if (!record) return null;
 
-  // Helper function để hiển thị tên user
   function getUserDisplayName(userId) {
     if (!userId) return '-';
     if (nguoiDung?.userID === userId) {
@@ -62,7 +61,6 @@ export default function ImprovementDetailModal({ open, record, onCancel, groups 
   };
   const t = labels[lang];
 
-  // Helper functions để hiển thị tên group và user (same as in ImprovementPage)
   function getUserDisplayName(userId) {
     if (!userId) return '-';
     if (nguoiDung?.userID === userId) {
@@ -81,7 +79,6 @@ export default function ImprovementDetailModal({ open, record, onCancel, groups 
     return group ? group.name : `Group ${groupId}`;
   }
 
-  // Helper để parse và hiển thị responsible (có thể là group:ID hoặc user:ID)
   function getResponsibleDisplay(responsible) {
     if (!responsible) return '-';
     

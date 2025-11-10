@@ -54,11 +54,9 @@ public class Checklists {
     @Column(name = "status", columnDefinition = "NVARCHAR(50)", nullable = false)
     private String status = "ACTIVE";
 
-    // Track khi nào thời gian bắt đầu hoặc lặp lại được thay đổi lần cuối
     @Column(name = "schedule_updated_at")
     private LocalDateTime scheduleUpdatedAt;
 
-    // Computed fields (not persisted)
     @Transient
     private LocalDateTime nextScheduledAt;
 

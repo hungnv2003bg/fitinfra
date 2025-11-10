@@ -38,7 +38,6 @@ public class UploadController {
     @Value("${storage.use-ftp:false}")
     private boolean useFtp;
 
-    // FTP cấu hình cho mảng upload chung (khác checklist)
     @Value("${ftp.host:}")
     private String ftpHost;
 
@@ -95,7 +94,6 @@ public class UploadController {
                 return serveFileFromFtp(filePath);
             }
 
-            // Local download (chỉ khi FTP tắt)
             Path uploadDirPath = Paths.get(uploadDir).toAbsolutePath().normalize();
             Path file = uploadDirPath.resolve(filePath).normalize();
             
@@ -149,7 +147,6 @@ public class UploadController {
             ftp.enterLocalPassiveMode();
             ftp.setFileType(FTP.BINARY_FILE_TYPE);
 
-            // Di chuyển đến thư mục upload chung
             if (!ftp.changeWorkingDirectory(ftpUploadDir)) {
                 logger.error("Cannot change to FTP directory: {}", ftpUploadDir);
                 return ResponseEntity.notFound().build();

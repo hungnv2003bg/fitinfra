@@ -24,7 +24,7 @@ export default function ImprovementPage() {
   const [searchText, setSearchText] = useState("");
   const [reviewerFilter, setReviewerFilter] = useState(undefined);
   const [statusFilter, setStatusFilter] = useState(undefined);
-  const [sortOrder, setSortOrder] = useState(undefined); // undefined shows placeholder, "newest" or "oldest"
+  const [sortOrder, setSortOrder] = useState(undefined); 
   const [dateRange, setDateRange] = useState([]);
   const [groups, setGroups] = useState([]);
   const [users, setUsers] = useState([]);
@@ -44,7 +44,6 @@ export default function ImprovementPage() {
     }
   }, []);
 
-  // Fetch groups and users data
   const fetchGroupsAndUsers = useCallback(async () => {
     try {
       const [groupsRes, usersRes] = await Promise.all([
@@ -58,7 +57,6 @@ export default function ImprovementPage() {
     }
   }, []);
 
-  // Đọc query để hỗ trợ điều hướng từ chi tiết checklist hoặc email
   const urlParams = useMemo(() => new URLSearchParams(window.location.search), []);
   const detailIdParam = urlParams.get('detailId');
   const qParam = urlParams.get('q');
@@ -69,7 +67,6 @@ export default function ImprovementPage() {
     fetchGroupsAndUsers();
   }, [fetchData, fetchGroupsAndUsers]);
 
-  // Auto mở modal chi tiết khi có improvementId parameter từ email
   useEffect(() => {
     if (improvementIdParam && rows.length > 0) {
       const improvement = rows.find(r => String(r.improvementID || r.id) === String(improvementIdParam));
@@ -111,11 +108,9 @@ export default function ImprovementPage() {
       });
     }
 
-    // If opened with a detailId or q query, apply default filter once
     if ((detailIdParam || qParam) && rows.length > 0 && filtered === rows) {
       let initial = rows;
       if (detailIdParam) {
-        // Tìm improvement có checklistDetailId bằng detailIdParam
         initial = rows.filter(it => String(it.checklistDetailId) === String(detailIdParam));
       }
       if (qParam) {
@@ -124,19 +119,18 @@ export default function ImprovementPage() {
       filtered = initial;
     }
 
-    // Apply sorting (default to newest if undefined)
     const appliedSortOrder = sortOrder || "newest";
     if (appliedSortOrder === "newest") {
       filtered = [...filtered].sort((a, b) => {
         const dateA = new Date(a.createdAt || 0).getTime();
         const dateB = new Date(b.createdAt || 0).getTime();
-        return dateB - dateA; // Newest first
+        return dateB - dateA; 
       });
     } else if (appliedSortOrder === "oldest") {
       filtered = [...filtered].sort((a, b) => {
         const dateA = new Date(a.createdAt || 0).getTime();
         const dateB = new Date(b.createdAt || 0).getTime();
-        return dateA - dateB; // Oldest first
+        return dateA - dateB;
       });
     }
 
@@ -152,7 +146,6 @@ export default function ImprovementPage() {
       
       const displayInfo = getResponsibleDisplayWithManv(responsible);
       if (displayInfo && displayInfo.label !== '-') {
-        // Format: "Name (EmployeeID)" if manv exists, otherwise just "Name"
         const displayLabel = displayInfo.manv 
           ? `${displayInfo.label} (${displayInfo.manv})` 
           : displayInfo.label;
@@ -166,7 +159,6 @@ export default function ImprovementPage() {
     }));
   }, [rows, groups, users]);
 
-  // Helper functions để hiển thị tên group và user
   function getUserDisplayName(userId) {
     if (!userId) return '-';
     if (nguoiDung?.userID === userId) {
@@ -185,17 +177,14 @@ export default function ImprovementPage() {
     return group ? group.name : `Group ${groupId}`;
   }
 
-  // Helper để parse và hiển thị responsible (có thể là group:ID hoặc user:ID hoặc groupID hoặc userID)
   function getResponsibleDisplay(responsible) {
     if (!responsible) return '-';
     
     if (typeof responsible === 'string') {
-      // Handle 'group:ID' or 'group:ID' format
       if (responsible.startsWith('group:') || responsible.startsWith('group')) {
         const groupId = parseInt(responsible.replace(/^group:?/, ''));
         return getGroupDisplayName(groupId);
       }
-      // Handle 'user:ID' or 'userID' format
       else if (responsible.startsWith('user:') || responsible.startsWith('user')) {
         const userId = parseInt(responsible.replace(/^user:?/, ''));
         return getUserDisplayName(userId);
@@ -205,18 +194,15 @@ export default function ImprovementPage() {
     return responsible;
   }
 
-  // Helper để lấy thông tin đầy đủ (tên + mã nhân viên) cho filter dropdown
   function getResponsibleDisplayWithManv(responsible) {
     if (!responsible) return { label: '-', manv: '' };
     
     if (typeof responsible === 'string') {
-      // Handle 'group:ID' or 'groupID' format
       if (responsible.startsWith('group:') || responsible.startsWith('group')) {
         const groupId = parseInt(responsible.replace(/^group:?/, ''));
         const groupName = getGroupDisplayName(groupId);
         return { label: groupName, manv: '' };
       }
-      // Handle 'user:ID' or 'userID' format
       else if (responsible.startsWith('user:') || responsible.startsWith('user')) {
         const userId = parseInt(responsible.replace(/^user:?/, ''));
         let user = null;
@@ -237,7 +223,6 @@ export default function ImprovementPage() {
     return { label: responsible, manv: '' };
   }
 
-  // Chuẩn hóa và hiển thị trạng thái
   const getStatusCode = (value) => {
     if (!value) return undefined;
     const v = String(value).toUpperCase();
@@ -349,7 +334,6 @@ export default function ImprovementPage() {
 
   const handleExportPDF = () => {
     try {
-      // Tạo HTML table để in
       const printWindow = window.open('', '_blank');
       const tableData = filteredRows.map((row, index) => {
         const stt = ((pagination.current - 1) * pagination.pageSize) + index + 1;
@@ -474,7 +458,6 @@ export default function ImprovementPage() {
 
   const handleExportExcel = () => {
     try {
-      // Tạo CSV content (có thể mở bằng Excel)
       const headers = [
         'STT',
         t.stTaskName,
@@ -500,7 +483,6 @@ export default function ImprovementPage() {
             ? row.collaborators.map(c => getResponsibleDisplay(c)).join('; ')
             : '-';
           
-          // Escape commas and quotes in CSV
           const escapeCSV = (str) => {
             if (!str) return '';
             const s = String(str);
@@ -527,7 +509,6 @@ export default function ImprovementPage() {
 
       const csvContent = csvRows.join('\n');
       
-      // Add BOM for UTF-8 Excel support
       const BOM = '\uFEFF';
       const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
@@ -550,25 +531,19 @@ export default function ImprovementPage() {
     }
   };
 
-  // Only ADMIN can delete; USER and MANAGER must not see delete button
   const isAdmin = Array.isArray(quyenList) && quyenList.some(role => 
     role === 'ADMIN' || role === 'ROLE_ADMIN'
   );
 
-  // Check if user can edit or update progress based on completion date and role
   const canEditOrUpdateProgress = (record) => {
-    // ADMIN can always edit/update
     if (isAdmin) return true;
     
-    // If no completedAt date, allow editing
     if (!record.completedAt) return true;
     
-    // Check if completed more than 7 days ago
     const completedDate = new Date(record.completedAt);
     const now = new Date();
     const daysDiff = Math.floor((now - completedDate) / (1000 * 60 * 60 * 24));
     
-    // USER and MANAGER cannot edit if completed more than 7 days ago
     return daysDiff <= 7;
   };
 
@@ -674,7 +649,6 @@ export default function ImprovementPage() {
         return count === 1 ? '1 file' : `${count} files`;
       }
     },
-    // Bỏ cột Người tạo theo yêu cầu
     {
       title: <div style={{ textAlign: 'center' }}>{t.actions}</div>,
       key: "action",

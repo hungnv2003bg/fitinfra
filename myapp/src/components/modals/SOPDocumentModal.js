@@ -111,7 +111,6 @@ export default function SOPDocumentModal({ open, onCancel, onAdded, sopId }) {
         }
       }
 
-
       const documentPayload = {
         title: values.title,
         description: values.description || "",
@@ -130,17 +129,13 @@ export default function SOPDocumentModal({ open, onCancel, onAdded, sopId }) {
 
       openNotification("success", lang === 'zh' ? "系统" : "Hệ thống", lang === 'zh' ? t.addSuccess : t.addSuccess);
       
-
       form.resetFields();
       setFiles([]);
       
-
       setIsLoading(false);
       
-
       onCancel();
       
-
       setTimeout(() => {
         onAdded();
         triggerMenuRefresh();
@@ -166,7 +161,6 @@ export default function SOPDocumentModal({ open, onCancel, onAdded, sopId }) {
       setIsLoading(false);
     }
   };
-
 
   const handleCancel = () => {
     setIsLoading(false);
@@ -258,10 +252,9 @@ export default function SOPDocumentModal({ open, onCancel, onAdded, sopId }) {
               multiple
               showUploadList={false}
               beforeUpload={async (file) => {
-                // Only validate and let onChange handle notifications and state updates
                 const { validateFileSizeAsync } = await import('../../utils/fileUtils');
                 const validation = await validateFileSizeAsync(file, lang);
-                return false; // prevent auto upload; we manage list in onChange
+                return false; 
               }}
               onChange={async (info) => {
                 const { validateFileSizeAsync } = await import('../../utils/fileUtils');

@@ -23,7 +23,6 @@ public class ImprovementEvent {
     @Column(name = "event_name", columnDefinition = "NVARCHAR(255)", nullable = false)
     private String eventName;
 
-    // One-to-many relationship với Improvements
     @OneToMany(mappedBy = "improvementEvent", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Improvements> improvements;
 }

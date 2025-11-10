@@ -39,7 +39,6 @@ public class JwtTokenProvider {
         Date expiryDate = new Date(now.getTime() + EXPIRATION_TIME);
         
         try {
-            // Safely encode fullName to handle Chinese characters
             String encodedFullName = userPrincipal.getFullName() != null ? 
                 Base64.getEncoder().encodeToString(userPrincipal.getFullName().getBytes(StandardCharsets.UTF_8)) : null;
             
@@ -110,7 +109,6 @@ public class JwtTokenProvider {
             
             String encodedFullName = claims.get("fullName", String.class);
             if (encodedFullName != null) {
-                // Decode the Base64 encoded fullName
                 byte[] decodedBytes = Base64.getDecoder().decode(encodedFullName);
                 return new String(decodedBytes, StandardCharsets.UTF_8);
             }

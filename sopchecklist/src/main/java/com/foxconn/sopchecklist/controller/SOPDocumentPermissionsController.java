@@ -192,14 +192,12 @@ public class SOPDocumentPermissionsController {
             return result;
         }
 
-        // Quyền theo tài khoản
         List<SOPDocumentPermission> userPerms = repo.findBySopIdAndUserId(id, me.getUserID().longValue());
         boolean userView = userPerms.stream().anyMatch(SOPDocumentPermission::isView);
         boolean userEdit = userPerms.stream().anyMatch(SOPDocumentPermission::isEdit);
         boolean userDelete = userPerms.stream().anyMatch(SOPDocumentPermission::isDel);
         boolean userCreate = userPerms.stream().anyMatch(SOPDocumentPermission::isCreate);
 
-        // Quyền theo nhóm (nếu có nhóm)
         List<Long> groupIds = (me.getGroups() == null) ? Collections.emptyList() : me.getGroups().stream().map(g -> g.getId()).collect(Collectors.toList());
         List<SOPDocumentPermission> groupPerms = groupIds.isEmpty() ? Collections.emptyList() : repo.findBySopIdAndGroupIdIn(id, groupIds);
         boolean groupView = groupPerms.stream().anyMatch(SOPDocumentPermission::isView);
@@ -238,14 +236,12 @@ public class SOPDocumentPermissionsController {
             return result;
         }
 
-        // Quyền theo tài khoản
         List<SOPDocumentPermission> userPerms = repo.findByDocumentIdAndUserId(documentId, me.getUserID().longValue());
         boolean userView = userPerms.stream().anyMatch(SOPDocumentPermission::isView);
         boolean userEdit = userPerms.stream().anyMatch(SOPDocumentPermission::isEdit);
         boolean userDelete = userPerms.stream().anyMatch(SOPDocumentPermission::isDel);
         boolean userCreate = userPerms.stream().anyMatch(SOPDocumentPermission::isCreate);
 
-        // Quyền theo nhóm (nếu có nhóm)
         List<Long> groupIds = (me.getGroups() == null) ? Collections.emptyList() : me.getGroups().stream().map(g -> g.getId()).collect(Collectors.toList());
         List<SOPDocumentPermission> groupPerms = groupIds.isEmpty() ? Collections.emptyList() : repo.findByDocumentIdAndGroupIdIn(documentId, groupIds);
         boolean groupView = groupPerms.stream().anyMatch(SOPDocumentPermission::isView);

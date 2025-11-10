@@ -48,7 +48,6 @@ function SOPDetailPage() {
     }
   }, [id, navigate]);
 
-  // Read query string for doc id: /sops/:id?doc=123
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const docId = params.get('doc');

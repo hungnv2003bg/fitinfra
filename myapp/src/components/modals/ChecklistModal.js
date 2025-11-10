@@ -32,7 +32,6 @@ export default function ChecklistModal({ open, onCancel, onAdded }) {
         const list = (timeRepeatsRes.data || []);
         setTimeRepeatOptions(list.map(r => ({ id: r.id, unit: r.unit, number: r.number, label: `${r.number} ${r.unit}`, value: r.id })));
 
-        // Fetch SOPs for level-1 options (documents are loaded lazily)
         try {
           const sopsRes = await axios.get("/api/sops", { params: { page: 0, size: 1000 } });
           const sops = Array.isArray(sopsRes.data) ? sopsRes.data : (sopsRes.data && Array.isArray(sopsRes.data.content) ? sopsRes.data.content : []);
@@ -100,7 +99,6 @@ export default function ChecklistModal({ open, onCancel, onAdded }) {
         label: d.title || `Tài liệu ${d.documentID ?? d.id}`,
         isLeaf: true,
       }));
-      // Force re-render by creating a completely new array
       setSopOptions(prevOptions => {
         const newOptions = JSON.parse(JSON.stringify(prevOptions));
         return newOptions;
@@ -253,12 +251,10 @@ export default function ChecklistModal({ open, onCancel, onAdded }) {
               loadData={loadSopDocuments}
               value={selectedSopPath}
               displayRender={(labels, selectedOptions) => {
-                // Use stored document label if available
                 if (selectedDocumentLabel) {
                   return selectedDocumentLabel;
                 }
                 
-                // Fallback to normal display logic
                 if (selectedOptions && selectedOptions.length === 2) {
                   const documentLabel = selectedOptions[1]?.label;
                   return documentLabel || labels[labels.length - 1];
@@ -268,11 +264,9 @@ export default function ChecklistModal({ open, onCancel, onAdded }) {
               }}
               onChange={(path) => {
                 setSelectedSopPath(path || []);
-                // Handle single selection
                 if (Array.isArray(path) && path.length === 2) {
-                  form.setFieldsValue({ sopIds: [path[1]] }); // Document ID, not SOP ID
+                  form.setFieldsValue({ sopIds: [path[1]] }); 
                   
-                  // Find and store document label for display
                   const findDocumentLabel = (options, targetId) => {
                     for (const option of options) {
                       if (String(option.value) === String(targetId)) {

@@ -8,9 +8,6 @@ import lombok.Setter;
 import javax.persistence.*;
 import java.time.LocalDateTime;
 
-/**
- * Bảng loại mail cron (SIGNUP, SOP, CHECKLISTDONE, etc.)
- */
 @Entity
 @Table(name = "type_cron_mail")
 @Getter

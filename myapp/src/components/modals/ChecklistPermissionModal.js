@@ -21,7 +21,6 @@ export default function ChecklistPermissionModal({ open, onCancel, onSaved }) {
           axios.get("/api/users"),
           axios.get(`/api/checklists/global/permissions`).catch(() => ({ data: {} })),
         ]);
-        // Filter out users with ADMIN role
         const allUsers = userRes.data || [];
         const nonAdminUsers = allUsers.filter(u => {
           if (!u.roles || !Array.isArray(u.roles)) return true;
@@ -120,7 +119,6 @@ export default function ChecklistPermissionModal({ open, onCancel, onSaved }) {
     },
   ];
 
-  // users already filtered to exclude ADMIN roles
   const filteredUsers = users.filter(u => {
     const searchTerm = userSearch.toLowerCase().trim();
     if (!searchTerm) {

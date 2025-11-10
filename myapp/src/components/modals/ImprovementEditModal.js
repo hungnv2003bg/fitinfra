@@ -12,7 +12,6 @@ export default function ImprovementEditModal({ open, record, onCancel, onSaved, 
   const [api, contextHolder] = notification.useNotification();
   const { nguoiDung } = useSelector(state => state.user);
   const [improvementEvents, setImprovementEvents] = useState([]);
-  // Simplified: remove upload/progress fields
 
   const t = lang === 'zh' ? {
     title: '编辑改善',
@@ -56,7 +55,6 @@ export default function ImprovementEditModal({ open, record, onCancel, onSaved, 
     updateFailed: 'Cập nhật thất bại',
   };
 
-  // Helper functions để hiển thị tên group và user (same as in ImprovementPage)
   function getUserDisplayName(userId) {
     if (!userId) return '-';
     if (nguoiDung?.userID === userId) {
@@ -75,7 +73,6 @@ export default function ImprovementEditModal({ open, record, onCancel, onSaved, 
     return group ? group.name : `Group ${groupId}`;
   }
 
-  // Helper để parse và hiển thị responsible (có thể là group:ID hoặc user:ID)
   function getResponsibleDisplay(responsible) {
     if (!responsible) return '-';
     
@@ -92,7 +89,6 @@ export default function ImprovementEditModal({ open, record, onCancel, onSaved, 
     return responsible;
   }
 
-  // Helper để tạo options cho Select (groups và users cho người phụ trách)
   const createSelectOptions = () => {
     const groupOptions = groups.map(group => ({
       key: `group:${group.id}`,
@@ -109,7 +105,6 @@ export default function ImprovementEditModal({ open, record, onCancel, onSaved, 
     return [...groupOptions, ...userOptions];
   };
 
-  // Helper để tạo options cho Select (chỉ users cho người phối hợp)
   const createCollaboratorOptions = () => {
     const userOptions = users.map(user => ({
       key: `user:${user.userID}`,
@@ -120,7 +115,6 @@ export default function ImprovementEditModal({ open, record, onCancel, onSaved, 
     return userOptions;
   };
 
-  // Fetch improvement events
   useEffect(() => {
     const fetchImprovementEvents = async () => {
       try {
@@ -139,11 +133,9 @@ export default function ImprovementEditModal({ open, record, onCancel, onSaved, 
 
   useEffect(() => {
     if (record) {
-      // Normalize responsible and collaborators to ensure correct format
       const normalizeValue = (val) => {
         if (!val) return val;
         if (typeof val === 'string') {
-          // Fix format: "group1" -> "group:1", "user3" -> "user:3"
           if (val.match(/^group\d+$/)) {
             return val.replace(/^group(\d+)$/, 'group:$1');
           }
@@ -192,14 +184,13 @@ export default function ImprovementEditModal({ open, record, onCancel, onSaved, 
       throw new Error(`Upload failed: ${response.status} - ${errorData}`);
     }
     const result = await response.json();
-    return result; // { url, name }
+    return result;
   };
 
   const handleOk = async () => {
     try {
       const values = await form.validateFields();
-      
-      // Tự động set completedAt khi trạng thái là DONE
+
       const patch = {
         category: values.category,
         issueDescription: values.issueDescription,
@@ -209,7 +200,7 @@ export default function ImprovementEditModal({ open, record, onCancel, onSaved, 
         plannedDueAt: values.plannedDueAt ? values.plannedDueAt.toISOString() : null,
         note: values.note,
         improvementEvent: values.improvementEventId ? { id: values.improvementEventId } : null,
-        lastEditedBy: nguoiDung?.userID, // Thêm thông tin người sửa cuối cùng
+        lastEditedBy: nguoiDung?.userID, 
       };
 
       await axios.patch(`/api/improvements/${encodeURIComponent(String(record.improvementID || record.id))}`, patch);

@@ -12,7 +12,6 @@ export default function ImprovementCreateModal({ open, onCancel, onCreated, grou
   const [api, contextHolder] = notification.useNotification();
   const { nguoiDung } = useSelector(state => state.user);
   const [improvementEvents, setImprovementEvents] = useState([]);
-  // simplified: no file upload in create modal
 
   const createSelectOptions = () => {
     const groupOptions = groups.map(group => ({
@@ -28,7 +27,6 @@ export default function ImprovementCreateModal({ open, onCancel, onCreated, grou
     return [...groupOptions, ...userOptions];
   };
 
-  // Helper để tạo options cho Select (chỉ users cho người phối hợp)
   const createCollaboratorOptions = () => {
     const userOptions = users.map(user => ({
       key: `user:${user.userID}`,

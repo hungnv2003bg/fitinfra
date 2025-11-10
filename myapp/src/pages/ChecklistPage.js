@@ -35,8 +35,6 @@ export default function ChecklistPage() {
   const [userChecklistPerms, setUserChecklistPerms] = useState({ view: true, edit: false, del: false, create: false });
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
 
-  // removed legacy weekly/detail bootstrap
-
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
@@ -56,7 +54,6 @@ export default function ChecklistPage() {
     }
   }, [groupFilter]);
 
-  // Fetch groups, users and time-repeats data
   const fetchGroupsAndUsers = useCallback(async () => {
     try {
       const [groupsRes, usersRes, timeRepeatsRes] = await Promise.all([
@@ -75,7 +72,6 @@ export default function ChecklistPage() {
   useEffect(() => {
     fetchData();
     fetchGroupsAndUsers();
-    // fetch my checklist permissions
     (async () => {
       try {
         const res = await axios.get('/api/checklists/global/permissions/check');
@@ -96,8 +92,6 @@ export default function ChecklistPage() {
       });
     }
 
-    // removed date range filtering per request
-
     if (statusFilter !== undefined && statusFilter !== 'all') {
       filtered = filtered.filter(item => (item.status || 'INACTIVE') === statusFilter);
     }
@@ -105,7 +99,6 @@ export default function ChecklistPage() {
     setFilteredRows(filtered);
   }, [rows, searchText, statusFilter]);
 
-  // Helper functions để hiển thị tên group và user
   const getUserDisplayName = (userId) => {
     if (!userId) return '-';
     if (nguoiDung?.userID === userId) {
@@ -141,8 +134,6 @@ export default function ChecklistPage() {
       return impl;
     }).join(', ');
   };
-
-  // Backend now provides next times; keep helpers removed
 
   const labels = {
     vi: {
@@ -226,7 +217,6 @@ export default function ChecklistPage() {
   const t = labels[lang];
   const { Option } = Select;
 
-  // Check if user has admin or manager role
   const isAdminOrManager = Array.isArray(quyenList) && quyenList.some(role => 
     role === 'ADMIN' || role === 'MANAGER' || role === 'ROLE_ADMIN' || role === 'ROLE_MANAGER'
   );
@@ -330,7 +320,7 @@ export default function ChecklistPage() {
           if (dueInDays < 365) return `${Math.round(dueInDays / 30)} Tháng`;
           return `${Math.round(dueInDays / 365)} Năm`;
         }
-        // zh
+        
         if (dueInDays === 1) return '1 天';
         if (dueInDays < 7) return `${dueInDays} 天`;
         if (dueInDays === 7) return '1 周';
@@ -464,7 +454,7 @@ export default function ChecklistPage() {
               style={{ width: 250 }}
               allowClear
             />
-            {/* Date range picker removed per request */}
+            {}
             <Input.Group compact>
               <Select
                 placeholder={t.filterByGroup}

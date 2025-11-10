@@ -29,7 +29,6 @@ public class SOPDocumentPermission {
     @Column(name = "group_id")
     private Long groupId;
 
-    // Optional user-level permission. If set, overrides group rules
     @Column(name = "user_id")
     private Long userId;
 

@@ -92,7 +92,6 @@ export default function MailSignupManagement() {
     try {
       const res = await axios.get('/api/mail-recipients-signup');
       const list = Array.isArray(res.data) ? res.data : [];
-      // The API already returns SIGNUP recipients
       setRecipients(list);
     } catch (e) {
       console.error('Error fetching recipients:', e);
@@ -109,7 +108,6 @@ export default function MailSignupManagement() {
   const handleAdd = () => {
     setEditingRecipient(null);
     form.resetFields();
-    // Set default values
     form.setFieldsValue({
       enabled: true,
     });
@@ -149,7 +147,6 @@ export default function MailSignupManagement() {
   const handleSubmit = async (values) => {
     try {
       if (editingRecipient) {
-        // For update, keep the existing typeMailRecipient
         const payload = {
           email: values.email,
           type: values.type,
@@ -158,12 +155,10 @@ export default function MailSignupManagement() {
         };
         await axios.put(`/api/mail-recipients-signup/${editingRecipient.id}`, payload);
       } else {
-        // For add, get or create the SIGNUP type
         let typeRes;
         try {
           typeRes = await axios.get('/api/type-mail-recipients/by-type/SIGNUP');
         } catch (error) {
-          // If SIGNUP type doesn't exist, create it
           typeRes = await axios.post('/api/type-mail-recipients', {
             typeName: 'SIGNUP',
             description: 'Mail thông báo đăng ký tài khoản',

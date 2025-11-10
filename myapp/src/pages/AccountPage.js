@@ -238,19 +238,15 @@ function AccountPage() {
     fetchRoles();
   }, []);
 
-  // Refetch users when server-side group filter changes
   useEffect(() => {
     if (serverGroupId !== undefined) {
       fetchUsers();
     }
   }, [serverGroupId]);
 
-
-  // Remove query param when navigating away
   const handleViewModalClose = () => {
     setIsViewModalVisible(false);
     setViewUser(null);
-    // Remove userId from URL when closing modal
     if (searchParams.get('userId')) {
       setSearchParams({});
     }
@@ -482,8 +478,6 @@ function AccountPage() {
     setIsViewModalVisible(true);
   };
 
-
-  // Check if showing specific user from URL
   const userId = searchParams.get('userId');
   const filteredUsers = userId ? 
     users.filter(user => user.userID === parseInt(userId)) :

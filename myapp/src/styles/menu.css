@@ -1,4 +1,3 @@
-/* Modern Menu Styles */
 .ant-menu {
   background: #fafafa !important;
   border-right: 1px solid #e8e8e8 !important;
@@ -46,7 +45,6 @@
   transform: translateX(4px) !important;
 }
 
-/* Link styles in menu */
 .ant-menu-item a,
 .ant-menu-submenu-title a {
   color: #333 !important;

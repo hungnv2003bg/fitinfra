@@ -184,16 +184,13 @@ export default function ChecklistEditModal({ open, record, onCancel, onSaved }) 
           status: record.status || 'ACTIVE',
         });
 
-        // If we already know the document id, try to preselect cascader path by discovering its category
         if (docId) {
           try {
-            // Try fast path: check if any loaded option already has this doc
             const existingCat = (sopOptions || []).find(o => Array.isArray(o.children) && o.children.some(c => Number(c.value) === Number(docId)));
             if (existingCat) {
               setSelectedSopPath([existingCat.value, Number(docId)]);
               return;
             }
-            // Otherwise scan categories
             const listRes = await axios.get('/api/sops', { params: { page: 0, size: 1000 } }).catch(() => ({ data: [] }));
             const list = Array.isArray(listRes.data) ? listRes.data : (listRes.data && Array.isArray(listRes.data.content) ? listRes.data.content : []);
             const categories = (list || []).map(s => s.id).filter(Boolean);
@@ -203,7 +200,6 @@ export default function ChecklistEditModal({ open, record, onCancel, onSaved }) 
                 const docs = Array.isArray(docsRes.data) ? docsRes.data : [];
                 const found = docs.find(d => Number(d.documentID) === Number(docId));
                 if (found) {
-                  // ensure options include this category with its documents for display
                   setSopOptions((prev) => {
                     const exists = (prev || []).some(o => o.value === catId);
                     const next = exists ? prev.slice() : [...prev, { value: catId, label: `SOP ${catId}`, isLeaf: false }];
@@ -242,7 +238,6 @@ export default function ChecklistEditModal({ open, record, onCancel, onSaved }) 
         lastEditedBy: nguoiDung?.userID,
         status: values.status || 'ACTIVE',
       };
-      // Only send startAt if user changed it; server rejects past times
       if (values.startAt) {
         const newStartIso = values.startAt.tz('Asia/Ho_Chi_Minh').format('YYYY-MM-DDTHH:mm:ss');
         const oldIso = record?.startAt ? dayjs(record.startAt).format('YYYY-MM-DDTHH:mm:ss') : null;
@@ -319,7 +314,7 @@ export default function ChecklistEditModal({ open, record, onCancel, onSaved }) 
           <InputNumber style={{ display: 'none' }} />
         </Form.Item>
 
-        {/* Row 1: startAt + repeat */}
+        {}
         <div style={{ display: 'flex', gap: '16px' }}>
           <div style={{ flex: 1 }}>
             <Form.Item 
@@ -357,7 +352,7 @@ export default function ChecklistEditModal({ open, record, onCancel, onSaved }) 
           </div>
         </div>
 
-        {/* Row 2: due time */}
+        {}
         <div style={{ display: 'flex', gap: '16px' }}>
           <div style={{ flex: 1 }}>
             <Form.Item label={t.dueTime}>
@@ -391,7 +386,7 @@ export default function ChecklistEditModal({ open, record, onCancel, onSaved }) 
           </div>
         </div>
 
-        {/* Row 3: implementers + status */}
+        {}
         <div style={{ display: 'flex', gap: '16px' }}>
           <div style={{ flex: 1 }}>
             <Form.Item name="implementers" label={t.implementers}>

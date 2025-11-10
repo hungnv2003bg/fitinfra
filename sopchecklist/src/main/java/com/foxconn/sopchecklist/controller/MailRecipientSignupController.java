@@ -22,7 +22,6 @@ public class MailRecipientSignupController {
         System.out.println("DEBUG: API called - getSignupRecipients");
         
         try {
-            // Return recipients filtered by SIGNUP type
             List<MailRecipientAll> result = service.findByTypeMailRecipientTypeNameAndEnabledTrue("SIGNUP");
             System.out.println("DEBUG: Found " + result.size() + " SIGNUP recipients");
             return result;
@@ -49,7 +48,6 @@ public class MailRecipientSignupController {
 
     @GetMapping("/test")
     public Object testQuery() {
-        // Test direct query
         List<MailRecipientAll> result = service.findByTypeMailRecipientTypeNameAndEnabledTrue("SIGNUP");
         System.out.println("TEST: Direct query returned " + result.size() + " results");
         return result;
@@ -59,7 +57,6 @@ public class MailRecipientSignupController {
     public void replaceSignupRecipients(@RequestParam(value = "to", required = false) String to,
                                         @RequestParam(value = "cc", required = false) String cc,
                                         @RequestParam(value = "bcc", required = false) String bcc) {
-        // Replace all mail recipients for SIGNUP type
         service.replaceAllByEventType("SIGNUP", to, cc, bcc);
     }
 

@@ -128,7 +128,6 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
     }
   }, [record, open]);
 
-  // Reset files when modal opens
   useEffect(() => {
     if (open) {
       setFiles([]);
@@ -145,7 +144,6 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
     try {
       const res = await axios.get(`/api/improvements/${encodeURIComponent(String(record?.improvementID || record?.id))}/progress`);
       const list = Array.isArray(res.data) ? res.data : [];
-      // sort by createdAt ascending (oldest first)
       const sorted = [...list].sort((a, b) => {
         const t1 = a && a.createdAt ? new Date(a.createdAt).getTime() : 0;
         const t2 = b && b.createdAt ? new Date(b.createdAt).getTime() : 0;
@@ -160,7 +158,6 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
     }
   };
 
-  // Overall progress for the current improvement (sum of history, capped at 100, chỉ tính các dòng Hoàn thành)
   const overallProgress = useMemo(() => {
     if (Array.isArray(progressList) && progressList.length > 0) {
       const total = progressList
@@ -174,7 +171,6 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
     return typeof record?.progress === 'number' ? record.progress : 0;
   }, [progressList, record]);
 
-  // Tính tổng tiến độ thực tế (không lọc theo status, chỉ cộng toàn bộ các tiến độ con)
   const [inputProgress, setInputProgress] = useState(undefined);
   const [inputProgressFocused, setInputProgressFocused] = useState(false);
   const totalProgressAll = useMemo(() => {
@@ -198,14 +194,13 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
       throw new Error(`Upload failed: ${response.status} - ${errorData}`);
     }
     const result = await response.json();
-    return result; // { url, name }
+    return result; 
   };
 
   const handleOk = async () => {
     try {
       const values = await form.validateFields();
 
-      // Validate total progress does not exceed 100 (chỉ cộng các bước Hoàn thành)
       const totalFromList = Array.isArray(progressList)
         ? progressList.filter(p => p.status === 2).reduce((sum, p) => sum + (typeof p.progressPercent === 'number' ? p.progressPercent : 0), 0)
         : 0;
@@ -214,7 +209,6 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
         return;
       }
 
-      // Upload files if any
       let uploadedFiles = [];
       if (files.length > 0 && record?.category) {
         try {
@@ -227,7 +221,6 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
         }
       }
 
-      // Use dedicated progress endpoint
       await axios.post(`/api/improvements/${encodeURIComponent(String(record?.improvementID || record?.id))}/progress`, {
         percent: values.progress,
         detail: values.progressDetail || null,
@@ -235,7 +228,6 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
         createdBy: nguoiDung?.userID || null,
       });
 
-      // Persist files if there are any changes (add new or delete existing)
       const originalFiles = Array.isArray(record.files) ? record.files : [];
       const hasDeletion = Array.isArray(currentFiles) && (currentFiles.length !== originalFiles.length);
       const hasAddition = uploadedFiles.length > 0;
@@ -273,7 +265,6 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
     try {
       const values = await editForm.validateFields();
 
-      // Validate total when editing (replace old value with new value; chỉ cộng các bước Hoàn thành)
       const totalFromList = Array.isArray(progressList)
         ? progressList.filter(p => p.status === 2).reduce((sum, p) => sum + (typeof p.progressPercent === 'number' ? p.progressPercent : 0), 0)
         : 0;
@@ -290,7 +281,6 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
         updatedBy: nguoiDung?.userID || null,
       });
 
-      // Upload any new files selected in edit modal
       let uploadedEditFiles = [];
       if (editFiles.length > 0 && record?.category) {
         try {
@@ -302,7 +292,6 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
         }
       }
 
-      // Persist improvement files if there are changes (additions or deletions)
       const hasFileChange = uploadedEditFiles.length > 0 || (Array.isArray(currentFiles) && (record?.files?.length !== currentFiles.length));
       if (hasFileChange) {
         const updatedFiles = [...(Array.isArray(currentFiles) ? currentFiles : []), ...uploadedEditFiles];
@@ -328,7 +317,6 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
       await axios.delete(`/api/improvement-progress/${progressId}`);
       notification.success({ message: t.sys, description: t.deleteSuccess, placement: 'bottomRight' });
       await loadProgress();
-      // Refresh outer list to reflect status/completedAt changes after deletion
       onSaved?.();
     } catch (err) {
       notification.error({ message: t.sys, description: t.deleteFailed, placement: 'bottomRight' });
@@ -385,7 +373,7 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
               showUploadList={false}
               beforeUpload={async (file) => {
                 const validation = await validateFileSizeAsync(file, 'vi');
-                return false; // prevent auto upload
+                return false; 
               }}
               onChange={async (info) => {
                 const { fileList } = info;
@@ -539,7 +527,7 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
         />
       </Modal>
 
-      {/* Edit Progress Modal */}
+      {}
       <Modal
         title={t.editTitle}
         open={editModalOpen}
@@ -609,7 +597,7 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
               <Button icon={<UploadOutlined />}>{t.chooseFile}</Button>
             </Upload>
 
-            {/* Existing files of improvement */}
+            {}
             {Array.isArray(currentFiles) && currentFiles.length > 0 && (
               <List
                 style={{ marginTop: 12 }}
@@ -636,7 +624,7 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
               />
             )}
 
-            {/* New selected files to add */}
+            {}
             {editFiles?.length > 0 && (
               <List
                 style={{ marginTop: 12 }}
@@ -667,7 +655,7 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
         </Form>
       </Modal>
 
-      {/* View Progress Modal */}
+      {}
       <Modal
         title={t.viewTitle}
         open={!!viewingRecord}
@@ -685,7 +673,7 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
               <Descriptions.Item label={t.status}>{statusOptions.find(opt => opt.value === (viewingRecord?.status ?? 0))?.label || '-'}</Descriptions.Item>
             </Descriptions>
 
-            {/* Files attached to this improvement */}
+            {}
             <Divider style={{ margin: "12px 0" }}>{t.files}</Divider>
             {Array.isArray(currentFiles) && currentFiles.length > 0 ? (
               <List

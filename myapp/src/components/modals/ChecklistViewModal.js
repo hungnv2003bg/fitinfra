@@ -15,7 +15,6 @@ export default function ChecklistViewModal({ open, record, onCancel }) {
   const [timeRepeats, setTimeRepeats] = useState([]);
   const [sops, setSops] = useState([]);
 
-  // Fetch groups, users, time-repeats and SOP documents data
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -30,7 +29,6 @@ export default function ChecklistViewModal({ open, record, onCancel }) {
         setTimeRepeats(timeRepeatsRes.data || []);
         setSops(sopDocumentsRes.data || []);
       } catch (error) {
-        // silent
       }
     };
     
@@ -41,14 +39,11 @@ export default function ChecklistViewModal({ open, record, onCancel }) {
   
   if (!record) return null;
 
-  // Helper để hiển thị tên người từ userID
   const getUserDisplayName = (userId) => {
     if (!userId) return '-';
-    // Nếu là user hiện tại
     if (nguoiDung?.userID === userId) {
       return nguoiDung?.fullName || nguoiDung?.manv || `User ${userId}`;
     }
-    // Tìm user trong danh sách đã fetch
     const user = users.find(u => u.userID === userId);
     if (user) {
       return user.fullName || user.manv || `User ${userId}`;
@@ -56,14 +51,12 @@ export default function ChecklistViewModal({ open, record, onCancel }) {
     return `User ${userId}`;
   };
 
-  // Helper để hiển thị tên group từ groupID
   const getGroupDisplayName = (groupId) => {
     if (!groupId) return '-';
     const group = groups.find(g => g.id === groupId);
     return group ? group.name : `Group ${groupId}`;
   };
 
-  // Helper để parse và hiển thị implementers
   const getImplementersDisplay = (implementers) => {
     if (!Array.isArray(implementers) || implementers.length === 0) return '-';
     
@@ -82,7 +75,6 @@ export default function ChecklistViewModal({ open, record, onCancel }) {
     }).join(', ');
   };
 
-  // Helper để hiển thị thời gian lặp lại
   const getRepeatDisplay = (repeatId) => {
     if (!repeatId) return '-';
     
@@ -100,7 +92,6 @@ export default function ChecklistViewModal({ open, record, onCancel }) {
     return `${timeRepeat.number} ${unitLabel}`;
   };
 
-  // Helper để hiển thị tên SOP document từ sopId (documentID)
   const getSOPDisplayName = (sopId) => {
     if (!sopId) return '-';
     
@@ -111,7 +102,6 @@ export default function ChecklistViewModal({ open, record, onCancel }) {
     return `Document ${sopId}`;
   };
 
-  // Kết xuất link điều hướng tới trang SOP Document
   const renderSOPLink = (sopId) => {
     if (!sopId) return '-';
     const sopDocument = sops.find(s => s.documentID === sopId);
@@ -124,15 +114,12 @@ export default function ChecklistViewModal({ open, record, onCancel }) {
           const res1 = await axios.get(`/api/sop-documents/${encodeURIComponent(String(sopId))}`);
           const data1 = res1?.data || {};
           sopCategory = data1?.sop?.id ?? data1?.sopId ?? data1?.sop?.code ?? data1?.sop_id ?? data1?.sopID ?? data1?.sopCode;
-          // If backend does not return the SOP reference, try to discover it by scanning categories
           if (!sopCategory) {
-            // 1) fetch categories
             const listRes = await axios.get('/api/sops', { params: { page: 0, size: 1000 } }).catch(() => ({ data: [] }));
             const list = Array.isArray(listRes.data)
               ? listRes.data
               : (listRes.data && Array.isArray(listRes.data.content) ? listRes.data.content : []);
             const categoryIds = (list || []).map(item => item.id).filter(Boolean);
-            // 2) fetch documents in batches until we find the documentID
             for (const catId of categoryIds) {
               try {
                 const docsRes = await axios.get(`/api/sops/${encodeURIComponent(String(catId))}/documents`, { params: { _t: Date.now() } });
@@ -143,12 +130,10 @@ export default function ChecklistViewModal({ open, record, onCancel }) {
                   break;
                 }
               } catch (e) {
-                // ignore and continue scanning
               }
             }
           }
         } catch (e) {
-          // silent
         }
       }
       if (sopCategory) {
@@ -176,7 +161,6 @@ export default function ChecklistViewModal({ open, record, onCancel }) {
     );
   };
 
-  // Helper để hiển thị thời gian cần hoàn thành
   const getDueDisplay = (dueInDays) => {
     if (!dueInDays) return '-';
     if (lang === 'vi') {

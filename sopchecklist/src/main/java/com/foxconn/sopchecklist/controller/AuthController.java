@@ -72,7 +72,6 @@ public class AuthController {
                 return ResponseEntity.badRequest().body("Tên đăng nhập không tồn tại");
             }
 
-            // If account exists but is inactive, inform the client immediately
             if (user.getStatus() == UserStatus.INACTIVE) {
                 return ResponseEntity.badRequest().body("Tài khoản chưa kích hoạt");
             }
@@ -86,7 +85,6 @@ public class AuthController {
             
             String jwt = jwtTokenProvider.taoToken(userPrincipal);
             
-            // Create refresh token
             RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
             
             List<String> roles = userPrincipal.getAuthorities().stream()
@@ -144,7 +142,6 @@ public class AuthController {
 
             Users savedUser = usersService.save(newUser);
             
-            // Gửi email thông báo đăng ký
             try {
                 String subject = "Thông báo đăng ký tài khoản mới - " + savedUser.getFullName();
                 StringBuilder body = new StringBuilder();
@@ -161,7 +158,6 @@ public class AuthController {
                 body.append("<tr><td style=\"border:1px solid #ddd;padding:8px;background:#f5f5f5;\">Trạng thái</td><td style=\"border:1px solid #ddd;padding:8px;\">").append(savedUser.getStatus() == UserStatus.INACTIVE ? "Chờ kích hoạt" : "Đã kích hoạt").append("</td></tr>");
                 body.append("</table>");
                 
-                // Deep link tới trang account detail
                 try {
                     Long userId = savedUser.getUserID() != null ? savedUser.getUserID().longValue() : null;
                     if (userId != null) {
@@ -178,7 +174,6 @@ public class AuthController {
                 
                 cronMailAllSendService.sendSignupMail(subject, body.toString(), savedUser.getUserID() != null ? savedUser.getUserID().longValue() : null);
             } catch (Exception emailException) {
-                // Log lỗi nhưng không fail registration
                 System.err.println("Error sending signup email: " + emailException.getMessage());
             }
             
@@ -237,23 +232,18 @@ public class AuthController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid refresh token");
             }
             
-            // Verify token is not expired or revoked
             refreshTokenService.verifyExpiration(token);
             
-            // Update last used time
             refreshTokenService.updateLastUsed(refreshToken);
             
-            // Get user and create new access token
             Users user = token.getUser();
             if (user.getStatus() != UserStatus.ACTIVE) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User account is inactive");
             }
             
-            // Create new access token
             UserPrincipal userPrincipal = UserPrincipal.create(user);
             String newAccessToken = jwtTokenProvider.taoToken(userPrincipal);
             
-            // Get user roles
             List<String> roles = userPrincipal.getAuthorities().stream()
                 .map(authority -> authority.getAuthority())
                 .collect(Collectors.toList());

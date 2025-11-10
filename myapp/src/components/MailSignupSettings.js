@@ -47,7 +47,6 @@ export default function MailSignupSettings() {
     try {
       const res = await axios.get('/api/mail-recipients-signup');
       const list = Array.isArray(res.data) ? res.data : [];
-      // The API already returns SIGNUP recipients, so no need to filter
       const mailTo = list.filter(r => r && r.enabled && r.type === 'TO').map(r => r.email).join(', ');
       const mailCc = list.filter(r => r && r.enabled && r.type === 'CC').map(r => r.email).join(', ');
       const mailBcc = list.filter(r => r && r.enabled && r.type === 'BCC').map(r => r.email).join(', ');

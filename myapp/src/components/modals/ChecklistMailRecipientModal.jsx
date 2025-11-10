@@ -91,13 +91,11 @@ export default function ChecklistMailRecipientModal({
       const values = await form.validateFields();
       setLoading(true);
 
-      // Xóa tất cả recipients cũ của checklist này
       const allRecipients = await axios.get(`/api/checklist-mail-recipients/checklist/${checklist.id}`);
       for (const recipient of allRecipients.data || []) {
         await axios.delete(`/api/checklist-mail-recipients/${recipient.id}`);
       }
 
-      // Thêm recipients mới theo type
       const addEmails = async (raw, type) => {
         if (!raw) return;
         const list = raw.split(',').map(e => e.trim()).filter(Boolean);

@@ -50,7 +50,6 @@ function FileLimitSection() {
       setCurrentLimit(response.maxSizeMb);
       form.setFieldsValue({ maxFileSize: response.maxSizeMb });
       
-      // Also try to get the limit ID for updating
       const allLimits = await limitSizeService.getActiveLimitSizes();
       const fileUploadLimit = allLimits.find(limit => limit.settingName === 'FILE_UPLOAD_LIMIT');
       if (fileUploadLimit) {
@@ -58,7 +57,6 @@ function FileLimitSection() {
       }
     } catch (error) {
       console.error('Error loading file upload limit:', error);
-      // Fallback to localStorage
       const fallbackLimit = parseInt(localStorage.getItem("maxFileSizeMB") || "10");
       setCurrentLimit(fallbackLimit);
       form.setFieldsValue({ maxFileSize: fallbackLimit });
@@ -76,26 +74,23 @@ function FileLimitSection() {
     setLoading(true);
     try {
       if (limitId) {
-        // Update existing limit
         await limitSizeService.updateLimitSize(limitId, {
           settingName: 'FILE_UPLOAD_LIMIT',
           maxSizeMb: values.maxFileSize,
           description: 'Giới hạn kích thước file upload',
           isActive: true,
-          updatedBy: 1 // Admin user ID
+          updatedBy: 1 
         });
       } else {
-        // Create new limit
         await limitSizeService.createLimitSize({
           settingName: 'FILE_UPLOAD_LIMIT',
           maxSizeMb: values.maxFileSize,
           description: 'Giới hạn kích thước file upload',
           isActive: true,
-          createdBy: 1 // Admin user ID
+          createdBy: 1
         });
       }
       
-      // Update localStorage as fallback
       localStorage.setItem("maxFileSizeMB", values.maxFileSize.toString());
       setCurrentLimit(values.maxFileSize);
       notification.success({
@@ -116,7 +111,7 @@ function FileLimitSection() {
       title={
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>{t.title}</span>
-          {/* Refresh button removed */}
+          {}
         </div>
       } 
       bordered

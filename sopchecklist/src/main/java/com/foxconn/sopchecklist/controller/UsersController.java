@@ -30,7 +30,6 @@ public class UsersController {
             @RequestParam(value = "groupId", required = false) String groupId,
             @RequestParam(value = "group", required = false) String group
     ) {
-        // Be tolerant to different param names/types to avoid 400 from type conversion
         Long gid = null;
         try {
             if (groupId != null && !groupId.isBlank()) {
@@ -39,7 +38,7 @@ public class UsersController {
                 gid = Long.valueOf(group.trim());
             }
         } catch (NumberFormatException ignored) {
-            gid = null; // If cannot parse, fall back to all users
+            gid = null; 
         }
 
         if (gid != null) {
@@ -90,10 +89,6 @@ public class UsersController {
                     .body(Map.of("error", "DUPLICATE_EMAIL", "duplicateValue", user.getEmail()));
             }
             
-
-            // No duplicate check on phone number per new requirement
-            
-
             if (user.getPasswordHash() != null && !user.getPasswordHash().isEmpty()) {
                 user.setPasswordHash(passwordEncoder.encode(user.getPasswordHash()));
             }
@@ -128,17 +123,12 @@ public class UsersController {
                     .body(Map.of("error", "DUPLICATE_EMAIL", "duplicateValue", user.getEmail()));
             }
             
-
-            // No duplicate check on phone number when updating
-            
-
             existingUser.setFullName(user.getFullName());
             existingUser.setEmail(user.getEmail());
             existingUser.setManv(user.getManv());
             existingUser.setPhone(user.getPhone());
             existingUser.setStatus(user.getStatus());
             
-
             if (user.getGroups() != null) {
                 existingUser.setGroups(user.getGroups());
             }
@@ -202,7 +192,6 @@ public class UsersController {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             Object principal = authentication != null ? authentication.getPrincipal() : null;
 
-            // Allow only ADMIN to reset password without current password
             boolean isAdmin = false;
             try {
                 com.foxconn.sopchecklist.config.UserPrincipal me = (com.foxconn.sopchecklist.config.UserPrincipal) principal;

@@ -41,8 +41,6 @@ public class ChecklistMailRecipientController {
     @GetMapping("/checklist/{checklistId}")
     public ResponseEntity<List<MailRecipientDTO>> getByChecklist(@PathVariable Long checklistId) {
         try {
-            System.out.println("DEBUG: getByChecklist called with checklistId=" + checklistId);
-            // Chỉ lấy recipients thuộc nhóm CHECKLIST và đang bật
             List<MailRecipientAll> recipients = mailRecipientRepository
                     .findByChecklistIdAndTypeMailRecipientTypeNameAndEnabledTrue(checklistId, "CHECKLIST");
             System.out.println("DEBUG: getByChecklist primary returned size=" + (recipients != null ? recipients.size() : -1));
@@ -50,12 +48,10 @@ public class ChecklistMailRecipientController {
         } catch (Exception e) {
             System.err.println("WARN: primary query failed in getByChecklist: " + e.getMessage());
             try {
-                // Fallback: không join theo typeName (phòng khi lỗi mapping), vẫn lọc theo checklist_id và enabled
                 List<MailRecipientAll> recipients = mailRecipientRepository.findByChecklistIdAndEnabledTrue(checklistId);
                 System.out.println("DEBUG: getByChecklist fallback returned size=" + (recipients != null ? recipients.size() : -1));
                 return ResponseEntity.ok(toDto(recipients));
             } catch (Exception ignored) {
-                // Tránh 500 khi xảy ra lỗi truy vấn, trả về danh sách rỗng để UI vẫn hoạt động
                 System.err.println("ERROR: fallback query failed in getByChecklist");
                 return ResponseEntity.ok(java.util.Collections.emptyList());
             }
@@ -68,8 +64,6 @@ public class ChecklistMailRecipientController {
     @GetMapping("/checklist/{checklistId}/type/{type}")
     public ResponseEntity<List<MailRecipientDTO>> getByChecklistAndType(@PathVariable Long checklistId, @PathVariable String type) {
         try {
-            System.out.println("DEBUG: getByChecklistAndType called with checklistId=" + checklistId + ", type=" + type);
-            // Lọc theo type (TO/CC/BCC) + nhóm CHECKLIST
             List<MailRecipientAll> recipients = mailRecipientRepository
                     .findByChecklistIdAndTypeAndTypeMailRecipientTypeNameAndEnabledTrue(checklistId, type, "CHECKLIST");
             System.out.println("DEBUG: getByChecklistAndType primary returned size=" + (recipients != null ? recipients.size() : -1));
@@ -77,7 +71,6 @@ public class ChecklistMailRecipientController {
         } catch (Exception e) {
             System.err.println("WARN: primary query failed in getByChecklistAndType: " + e.getMessage());
             try {
-                // Fallback: lọc theo checklistId + type nếu join typeName gặp lỗi
                 List<MailRecipientAll> recipients = mailRecipientRepository
                         .findByChecklistIdAndTypeAndEnabledTrue(checklistId, type);
                 System.out.println("DEBUG: getByChecklistAndType fallback returned size=" + (recipients != null ? recipients.size() : -1));
@@ -114,13 +107,11 @@ public class ChecklistMailRecipientController {
             String type = request.get("type").toString(); // TO, CC, BCC
             String note = request.getOrDefault("note", "").toString();
 
-            // Kiểm tra checklist tồn tại
             Checklists checklist = checklistsRepository.findById(checklistId).orElse(null);
             if (checklist == null) {
                 return ResponseEntity.badRequest().build();
             }
 
-            // Tìm hoặc tạo TypeMailRecipient cho CHECKLIST
             TypeMailRecipient typeMailRecipient = typeMailRecipientRepository.findByTypeName("CHECKLIST").orElse(null);
             if (typeMailRecipient == null) {
                 typeMailRecipient = new TypeMailRecipient();
@@ -132,7 +123,6 @@ public class ChecklistMailRecipientController {
                 typeMailRecipient = typeMailRecipientRepository.save(typeMailRecipient);
             }
 
-            // Kiểm tra email đã tồn tại chưa
             List<MailRecipientAll> existing = mailRecipientRepository.findByChecklistIdAndTypeAndTypeMailRecipientTypeNameAndEnabledTrue(
                 checklistId, type, "CHECKLIST");
             boolean emailExists = existing.stream().anyMatch(r -> r.getEmail().equalsIgnoreCase(email));

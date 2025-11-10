@@ -10,11 +10,9 @@ public class RegisterRequest {
     private String password;
     private List<Long> groupIds;
 
-    // Default constructor
     public RegisterRequest() {
     }
 
-    // Constructor with parameters
     public RegisterRequest(String fullName, String email, String manv, String phone, String password, List<Long> groupIds) {
         this.fullName = fullName;
         this.email = email;
@@ -24,7 +22,6 @@ public class RegisterRequest {
         this.groupIds = groupIds;
     }
 
-    // Getters and Setters
     public String getFullName() {
         return fullName;
     }

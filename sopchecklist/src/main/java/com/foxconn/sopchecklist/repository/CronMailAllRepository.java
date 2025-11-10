@@ -18,8 +18,6 @@ public interface CronMailAllRepository extends JpaRepository<CronMailAll, Long> 
     
     List<CronMailAll> findByStatusAndRetryCountLessThan(String status, Integer retryCount);
 
-    // Find reminder mails sent for a checklist detail within a time period
-    // Note: typeId is passed separately because we need to find the CHECKLIST typeId first
     @Query("SELECT m FROM CronMailAll m WHERE m.typeId = :typeId AND m.referenceId = :referenceId AND m.createdAt >= :since")
     List<CronMailAll> findReminderMailsByTypeIdAndReferenceIdAndCreatedAtAfter(@Param("typeId") Long typeId, @Param("referenceId") Long referenceId, @Param("since") LocalDateTime since);
 }

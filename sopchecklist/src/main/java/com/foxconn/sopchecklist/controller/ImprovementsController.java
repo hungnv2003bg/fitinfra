@@ -37,13 +37,12 @@ public class ImprovementsController {
     public List<Improvements> findAll() {
         try {
             List<Improvements> improvements = repository.findAll();
-            // Ensure all relationships are loaded to avoid lazy loading issues
             for (Improvements improvement : improvements) {
                 if (improvement.getChecklist() != null) {
-                    improvement.getChecklist().getId(); // Trigger lazy loading
+                    improvement.getChecklist().getId(); 
                 }
                 if (improvement.getImprovementEvent() != null) {
-                    improvement.getImprovementEvent().getId(); // Trigger lazy loading
+                    improvement.getImprovementEvent().getId(); 
                 }
             }
             return improvements;
@@ -63,17 +62,14 @@ public class ImprovementsController {
     public ResponseEntity<Improvements> create(@RequestBody Improvements body) {
         body.setImprovementID(null);
         body.setCreatedAt(timeService.nowVietnam());
-        // createdBy if provided
         if (body.getCreatedBy() == null && body.getLastEditedBy() != null) {
             body.setCreatedBy(body.getLastEditedBy());
         }
         
-        // Set lastEditedBy and lastEditedAt for new records
         if (body.getLastEditedBy() != null) {
             body.setLastEditedAt(timeService.nowVietnam());
         }
         
-        // Convert plannedDueAt from UTC to Vietnam timezone (+7)
         if (body.getPlannedDueAt() != null) {
             LocalDateTime utcTime = body.getPlannedDueAt();
             LocalDateTime vietnamTime = utcTime.atZone(java.time.ZoneId.of("UTC"))
@@ -82,7 +78,6 @@ public class ImprovementsController {
             body.setPlannedDueAt(vietnamTime);
         }
         
-        // Convert completedAt from UTC to Vietnam timezone (+7)
         if (body.getCompletedAt() != null) {
             LocalDateTime utcTime = body.getCompletedAt();
             LocalDateTime vietnamTime = utcTime.atZone(java.time.ZoneId.of("UTC"))
@@ -91,12 +86,10 @@ public class ImprovementsController {
             body.setCompletedAt(vietnamTime);
         }
         
-        // Map improvement event if provided
         if (body.getImprovementEvent() != null && body.getImprovementEvent().getId() != null) {
             ImprovementEvent event = eventRepository.findById(body.getImprovementEvent().getId()).orElse(null);
             body.setImprovementEvent(event);
         }
-        // Ensure default progress and status on creation
         if (body.getProgress() == null) {
             body.setProgress(0);
         }
@@ -105,7 +98,6 @@ public class ImprovementsController {
         }
         Improvements created = repository.save(body);
         
-        // Gửi mail thông báo khi tạo mới cải thiện
         try {
             mailImprovementCreationService.queueDirectImprovementCreationMail(created);
         } catch (Exception e) {
@@ -124,7 +116,6 @@ public class ImprovementsController {
             if (incoming.getCollaborators() != null) existed.setCollaborators(incoming.getCollaborators());
             if (incoming.getActionPlan() != null) existed.setActionPlan(incoming.getActionPlan());
             if (incoming.getPlannedDueAt() != null) {
-                // Frontend gửi UTC time, cần convert về Vietnam timezone (+7)
                 LocalDateTime utcTime = incoming.getPlannedDueAt();
                 LocalDateTime vietnamTime = utcTime.atZone(java.time.ZoneId.of("UTC"))
                     .withZoneSameInstant(java.time.ZoneId.of("Asia/Ho_Chi_Minh"))
@@ -132,7 +123,6 @@ public class ImprovementsController {
                 existed.setPlannedDueAt(vietnamTime);
             }
             if (incoming.getCompletedAt() != null) {
-                // Frontend gửi UTC time, cần convert về Vietnam timezone (+7)
                 LocalDateTime utcTime = incoming.getCompletedAt();
                 LocalDateTime vietnamTime = utcTime.atZone(java.time.ZoneId.of("UTC"))
                     .withZoneSameInstant(java.time.ZoneId.of("Asia/Ho_Chi_Minh"))
@@ -142,7 +132,6 @@ public class ImprovementsController {
             if (incoming.getNote() != null) existed.setNote(incoming.getNote());
             if (incoming.getFiles() != null) existed.setFiles(incoming.getFiles());
             
-            // Track status change for completion email
             String oldStatus = existed.getStatus();
             boolean wasNotDone = oldStatus == null || (!oldStatus.equals("DONE") && !oldStatus.equals("COMPLETED"));
             boolean wasDone = oldStatus != null && (oldStatus.equals("DONE") || oldStatus.equals("COMPLETED"));
@@ -151,11 +140,8 @@ public class ImprovementsController {
                 existed.setStatus(incoming.getStatus());
             }
             
-            // Set completedAt when status becomes DONE or COMPLETED
-            // Xóa completedAt khi status chuyển từ DONE/COMPLETED về status khác
             String newStatus = existed.getStatus();
             if (newStatus != null && (newStatus.equals("DONE") || newStatus.equals("COMPLETED"))) {
-                // Status là DONE hoặc COMPLETED
                 if (existed.getCompletedAt() == null || (incoming.getCompletedAt() != null)) {
                     if (incoming.getCompletedAt() != null) {
                         existed.setCompletedAt(incoming.getCompletedAt());
@@ -164,7 +150,6 @@ public class ImprovementsController {
                     }
                 }
             } else {
-                // Status không phải DONE hoặc COMPLETED - xóa completedAt nếu trước đó đã DONE
                 if (wasDone) {
                     existed.setCompletedAt(null);
                 }
@@ -172,13 +157,11 @@ public class ImprovementsController {
             
             if (incoming.getLastEditedBy() != null) existed.setLastEditedBy(incoming.getLastEditedBy());
 
-            // Map improvement event if provided in payload as nested object { improvementEvent: { id } }
             if (incoming.getImprovementEvent() != null) {
                 if (incoming.getImprovementEvent().getId() != null) {
                     ImprovementEvent event = eventRepository.findById(incoming.getImprovementEvent().getId()).orElse(null);
                     existed.setImprovementEvent(event);
                 } else {
-                    // allow clearing the event by sending null id
                     existed.setImprovementEvent(null);
                 }
             }
@@ -186,7 +169,6 @@ public class ImprovementsController {
             existed.setLastEditedAt(timeService.nowVietnam());
             Improvements saved = repository.save(existed);
             
-            // Gửi mail thông báo hoàn thành nếu status chuyển từ không phải DONE/COMPLETED sang DONE/COMPLETED
             if (wasNotDone && newStatus != null && (newStatus.equals("DONE") || newStatus.equals("COMPLETED"))) {
                 try {
                     mailImprovementDoneService.queueImprovementDoneMail(saved);

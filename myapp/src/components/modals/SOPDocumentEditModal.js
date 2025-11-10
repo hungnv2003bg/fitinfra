@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Modal, Form, Input, notification, Typography, Upload, Button, List, Tag, message } from "antd";
-import { UploadOutlined, DeleteOutlined } from "@ant-design/icons";
+import { Modal, Form, Input, notification, Typography, Upload, Button, List, Tag, message, Cascader, Tooltip } from "antd";
+import { UploadOutlined, DeleteOutlined, SwapOutlined } from "@ant-design/icons";
 import { useSelector } from "react-redux";
 import { useMenuRefresh } from "../../contexts/MenuRefreshContext";
 import { useLanguage } from "../../contexts/LanguageContext";
@@ -20,6 +20,11 @@ export default function SOPDocumentEditModal({ open, record, onCancel, onSaved }
   const [existingFiles, setExistingFiles] = useState([]);
   const [fileDeletePermissions, setFileDeletePermissions] = useState({});
   const { Text } = Typography;
+  const [moveFileModalVisible, setMoveFileModalVisible] = useState(false);
+  const [selectedFileToMove, setSelectedFileToMove] = useState(null);
+  const [targetDocumentId, setTargetDocumentId] = useState(null);
+  const [sopCascaderOptions, setSopCascaderOptions] = useState([]);
+  const [selectedSopPath, setSelectedSopPath] = useState([]);
 
   const openNotification = (type, title, desc) =>
     api[type]({ message: title, description: desc, placement: "bottomRight" });
@@ -51,7 +56,6 @@ export default function SOPDocumentEditModal({ open, record, onCancel, onSaved }
   useEffect(() => {
     if (record && record.files) {
       setExistingFiles(record.files);
-      // Check delete permissions for each file
       const checkPermissions = async () => {
         const permissions = {};
         for (const file of record.files) {
@@ -83,8 +87,62 @@ export default function SOPDocumentEditModal({ open, record, onCancel, onSaved }
     if (open) {
       timeService.getServerTime().catch(error => {
       });
+      fetchSOPsForCascader();
     }
   }, [open]);
+
+  const fetchSOPsForCascader = async () => {
+    try {
+      const response = await axios.get('/api/sops', { params: { page: 0, size: 1000 } });
+      const sops = Array.isArray(response.data) 
+        ? response.data 
+        : (response.data && Array.isArray(response.data.content) ? response.data.content : []);
+      
+      setSopCascaderOptions((sops || []).map(s => ({
+        value: s.id,
+        label: s.name || `SOP ${s.id}`,
+        isLeaf: false
+      })));
+    } catch (error) {
+      console.error('Error fetching SOPs:', error);
+      setSopCascaderOptions([]);
+    }
+  };
+
+  const loadSopDocuments = async (selectedOptions) => {
+    const target = selectedOptions[selectedOptions.length - 1];
+    target.loading = true;
+    
+    try {
+      const res = await axios.get(`/api/sops/${encodeURIComponent(String(target.value))}/documents`);
+      const docs = Array.isArray(res.data) ? res.data : [];
+      
+      let filteredDocs = docs;
+      if (record && record.sop && record.sop.id === target.value) {
+        filteredDocs = docs.filter(doc => (doc.documentID ?? doc.id) !== record.documentID);
+      }
+      
+      target.children = filteredDocs.map(d => ({
+        value: d.documentID ?? d.id,
+        label: d.title || `Tài liệu ${d.documentID ?? d.id}`,
+        isLeaf: true
+      }));
+      
+      setSopCascaderOptions(prevOptions => {
+        const newOptions = JSON.parse(JSON.stringify(prevOptions));
+        return newOptions;
+      });
+    } catch (error) {
+      console.error('Error loading documents:', error);
+      target.children = [];
+      setSopCascaderOptions(prevOptions => {
+        const newOptions = JSON.parse(JSON.stringify(prevOptions));
+        return newOptions;
+      });
+    } finally {
+      target.loading = false;
+    }
+  };
 
   const uploadFile = async (file, sopName, sopDocumentName) => {
     const formData = new FormData();
@@ -140,6 +198,64 @@ export default function SOPDocumentEditModal({ open, record, onCancel, onSaved }
         setFiles(prev => prev.filter(f => f.uid !== uid));
       }
     });
+  };
+
+  const handleMoveFile = (file) => {
+    setSelectedFileToMove(file);
+    setTargetDocumentId(null);
+    setSelectedSopPath([]);
+    setMoveFileModalVisible(true);
+  };
+
+  const handleCascaderChange = (value) => {
+    setSelectedSopPath(value || []);
+    if (value && value.length === 2) {
+      setTargetDocumentId(value[1]);
+    } else {
+      setTargetDocumentId(null);
+    }
+  };
+
+  const handleConfirmMoveFile = async () => {
+    if (!selectedFileToMove || !targetDocumentId) {
+      message.error({
+        content: lang === 'zh' ? '请选择目标文档' : 'Vui lòng chọn tài liệu đích',
+        placement: 'bottomRight'
+      });
+      return;
+    }
+
+    try {
+      const response = await axios.post(
+        `/api/sop-documents/${record.documentID}/move-file/${selectedFileToMove.id}`,
+        { targetDocumentId }
+      );
+
+      if (response.data.success) {
+        openNotification(
+          "success",
+          lang === 'zh' ? "系统" : "Hệ thống",
+          lang === 'zh' 
+            ? `成功移动文件 "${selectedFileToMove.fileName}"` 
+            : `Chuyển file "${selectedFileToMove.fileName}" thành công`
+        );
+        
+        setExistingFiles(prev => prev.filter(f => f.id !== selectedFileToMove.id));
+        setMoveFileModalVisible(false);
+        setSelectedFileToMove(null);
+        setTargetDocumentId(null);
+        setSelectedSopPath([]);
+        
+        setTimeout(() => {
+          onSaved?.();
+          triggerMenuRefresh();
+        }, 500);
+      }
+    } catch (error) {
+      const errorMsg = error?.response?.data?.error || 
+        (lang === 'zh' ? '移动文件失败' : 'Chuyển file thất bại');
+      openNotification("error", lang === 'zh' ? "系统" : "Hệ thống", errorMsg);
+    }
   };
 
   const handleOk = async () => {
@@ -287,7 +403,6 @@ export default function SOPDocumentEditModal({ open, record, onCancel, onSaved }
               multiple
               showUploadList={false}
               beforeUpload={async (file) => {
-                // Let onChange handle notifications to avoid duplicates
                 const { validateFileSizeAsync } = await import('../../utils/fileUtils');
                 const validation = await validateFileSizeAsync(file, lang);
                 return false;
@@ -330,19 +445,34 @@ export default function SOPDocumentEditModal({ open, record, onCancel, onSaved }
                   <List.Item
                     key={file.id}
                     actions={[
-                      <Button
-                        type="text"
-                        danger={fileDeletePermissions[file.id]}
-                        disabled={!fileDeletePermissions[file.id]}
-                        size="small"
-                        icon={<DeleteOutlined />}
-                        onClick={() => removeFile(file.id)}
+                      <Tooltip
+                        key="move"
+                        title={lang === 'zh' ? '移动文件到其他文档' : 'Chuyển file sang tài liệu khác'}
+                      >
+                        <Button
+                          type="text"
+                          size="small"
+                          icon={<SwapOutlined />}
+                          onClick={() => handleMoveFile(file)}
+                        />
+                      </Tooltip>,
+                      <Tooltip
+                        key="delete"
                         title={
                           fileDeletePermissions[file.id] 
                             ? (lang === 'zh' ? '删除文件' : 'Xóa file')
                             : (lang === 'zh' ? '文件超过3天，只有管理员可以删除' : 'File quá 3 ngày,Vui lòng liên hệ admin')
                         }
-                      />
+                      >
+                        <Button
+                          type="text"
+                          danger={fileDeletePermissions[file.id]}
+                          disabled={!fileDeletePermissions[file.id]}
+                          size="small"
+                          icon={<DeleteOutlined />}
+                          onClick={() => removeFile(file.id)}
+                        />
+                      </Tooltip>
                     ]}
                   >
                     <List.Item.Meta
@@ -420,6 +550,54 @@ export default function SOPDocumentEditModal({ open, record, onCancel, onSaved }
             )}
           </Form.Item>
         </Form>
+      </Modal>
+
+      {}
+      <Modal
+        title={lang === 'zh' ? '移动文件到其他文档' : 'Chuyển file sang tài liệu khác'}
+        open={moveFileModalVisible}
+        onCancel={() => {
+          setMoveFileModalVisible(false);
+          setSelectedFileToMove(null);
+          setTargetDocumentId(null);
+          setSelectedSopPath([]);
+        }}
+        onOk={handleConfirmMoveFile}
+        okText={lang === 'zh' ? '移动' : 'Chuyển'}
+        cancelText={lang === 'zh' ? '取消' : 'Hủy'}
+        width={500}
+        okButtonProps={{ disabled: !targetDocumentId }}
+      >
+        <div style={{ marginBottom: 16 }}>
+          <Text strong>{lang === 'zh' ? '文件:' : 'File:'}</Text>
+          <div style={{ marginTop: 8, padding: '8px 12px', background: '#f5f5f5', borderRadius: 4 }}>
+            {selectedFileToMove?.fileName}
+          </div>
+        </div>
+        
+        <div>
+          <Text strong>{lang === 'zh' ? '选择目标文档:' : 'Chọn tài liệu đích:'}</Text>
+          <Cascader
+            style={{ width: '100%', marginTop: 8 }}
+            options={sopCascaderOptions}
+            value={selectedSopPath}
+            onChange={handleCascaderChange}
+            loadData={loadSopDocuments}
+            placeholder={lang === 'zh' ? '请选择 SOP 和文档' : 'Chọn SOP và tài liệu'}
+            changeOnSelect={false}
+            showSearch
+          />
+        </div>
+
+        {selectedSopPath.length === 1 && (
+          <div style={{ marginTop: 12, padding: 8, background: '#e6f7ff', border: '1px solid #91d5ff', borderRadius: 4 }}>
+            <Text style={{ fontSize: 12, color: '#1890ff' }}>
+              {lang === 'zh' 
+                ? '请选择文档' 
+                : 'Vui lòng chọn tài liệu'}
+            </Text>
+          </div>
+        )}
       </Modal>
     </>
   );

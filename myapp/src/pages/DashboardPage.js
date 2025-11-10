@@ -52,24 +52,18 @@ export default function DashboardPage() {
       const sopsData = await sopsRes.json();
       const sopsItems = Array.isArray(sopsData) ? sopsData : (sopsData?.content || []);
 
-
       const docsRes = await fetch(API_CONFIG.getApiUrl(API_CONFIG.ENDPOINTS.SOP_DOCUMENTS));
       const docsData = await docsRes.json();
       
-
       const checklistRes = await fetch(API_CONFIG.getApiUrl(API_CONFIG.ENDPOINTS.CHECKLISTS));
       const checklistData = await checklistRes.json();
-
-
 
       const totalSOPs = Array.isArray(docsData) ? docsData.length : 0;
       const totalChecklist = checklistData?.length || 0;
       
-
       const improvements = checklistData?.filter(item => item.improvement?.trim()) || [];
       const completedImprovements = improvements.filter(item => item.status === 'Hoàn thành').length;
       
-
       const categoryStats = sopsItems?.reduce((acc, item) => {
         const category = item.category || 'general';
         acc[category] = (acc[category] || 0) + 1;
@@ -79,9 +73,7 @@ export default function DashboardPage() {
 
       const recentSOPs = sopsItems?.slice(-5).reverse() || [];
 
-
       const recentChecklist = checklistData?.slice(-5).reverse() || [];
-
 
       const reviewerCount = checklistData?.reduce((acc, item) => {
         const reviewer = item.reviewer;
@@ -103,8 +95,7 @@ export default function DashboardPage() {
         const date = new Date(today);
         date.setDate(date.getDate() - i);
         const dateStr = date.toISOString().split('T')[0];
-        
-
+      
         const completedCount = Math.floor(Math.random() * 10) + 1;
         
         checklistByDay.push({

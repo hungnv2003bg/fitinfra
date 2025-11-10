@@ -28,11 +28,9 @@ public class ChecklistDetail {
     @JoinColumn(name = "checklist_id")
     private Checklists checklist;
 
-    // Lấy từ checklist
     @Column(name = "task_name", nullable = false, columnDefinition = "NVARCHAR(200)")
     private String taskName;
 
-    // Lấy từ checklist
     @Column(name = "work_content", columnDefinition = "NVARCHAR(MAX)")
     private String workContent;
 
@@ -58,7 +56,6 @@ public class ChecklistDetail {
     @Column(name = "status", columnDefinition = "NVARCHAR(50)")
     private String status = "IN_PROGRESS";
 
-    // Đường dẫn/tên file upload (nếu có)
     @Column(name = "upload_file", columnDefinition = "NVARCHAR(255)")
     private String uploadFile;
 
@@ -71,4 +68,15 @@ public class ChecklistDetail {
     @OneToMany(mappedBy = "checklistDetail", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @JsonManagedReference
     private List<ChecklistDetailFiles> files;
+
+    @Transient
+    private Boolean hasCompletedImprovement;
+
+    public Boolean getHasCompletedImprovement() {
+        return hasCompletedImprovement;
+    }
+
+    public void setHasCompletedImprovement(Boolean hasCompletedImprovement) {
+        this.hasCompletedImprovement = hasCompletedImprovement;
+    }
 }

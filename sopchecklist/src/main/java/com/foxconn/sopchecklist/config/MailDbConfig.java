@@ -29,7 +29,6 @@ public class MailDbConfig {
         return new JdbcTemplate(dataSource);
     }
 
-    // Expose a named JdbcTemplate for the main DataSource to avoid ambiguous injection
     @Bean(name = "mainJdbcTemplate")
     public JdbcTemplate mainJdbcTemplate(DataSource dataSource) {
         return new JdbcTemplate(dataSource);

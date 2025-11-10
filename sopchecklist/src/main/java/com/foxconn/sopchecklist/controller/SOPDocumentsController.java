@@ -114,6 +114,9 @@ public class SOPDocumentsController {
 
         @Autowired
         private com.foxconn.sopchecklist.repository.GroupRepository groupRepository;
+        
+        @Autowired
+        private com.foxconn.sopchecklist.repository.SOPDocumentFilesRepository sopDocumentFilesRepository;
 
         @org.springframework.beans.factory.annotation.Value("${sop.edit-delete.limit-days:3}")
         private int editDeleteLimitDays;
@@ -249,7 +252,6 @@ public class SOPDocumentsController {
 
                 existing.setLastEditedAt(timeService.nowVietnam());
                 
-                // Decide last editor: use explicit value if provided; otherwise default to current user
                 if (updates.containsKey("lastEditedBy")) {
                     Integer lastEditedById = (Integer) updates.get("lastEditedBy");
                     if (lastEditedById != null) {
@@ -305,14 +307,12 @@ public class SOPDocumentsController {
                     body.append("<th style=\"text-align:left;border:1px solid #ddd;padding:8px;background:#f5f5f5;\">Sau khi thay đổi</th>");
                     body.append("</tr>");
 
-                    // Title diff
                     body.append("<tr>");
                     body.append("<td style=\"border:1px solid #ddd;padding:8px;\">Tên tài liệu</td>");
                     body.append("<td style=\"border:1px solid #ddd;padding:8px;\">").append(escapeHtml(nullToEmpty(oldTitle))).append("</td>");
                     body.append("<td style=\"border:1px solid #ddd;padding:8px;\">").append(escapeHtml(nullToEmpty(updatedDocument.getTitle()))).append("</td>");
                     body.append("</tr>");
 
-                    // Description diff
                     body.append("<tr>");
                     body.append("<td style=\"border:1px solid #ddd;padding:8px;\">Mô tả</td>");
                     body.append("<td style=\"border:1px solid #ddd;padding:8px;\">").append(escapeHtml(nullToEmpty(oldDescription))).append("</td>");
@@ -325,7 +325,6 @@ public class SOPDocumentsController {
                     String lastEditedByStr = (updatedDocument.getLastEditedBy() != null && updatedDocument.getLastEditedBy().getFullName() != null)
                         ? updatedDocument.getLastEditedBy().getFullName() : "";
 
-                    // Last editor/time rows (no before/after for editor/time, only show current in After col)
                     body.append("<tr>");
                     body.append("<td style=\"border:1px solid #ddd;padding:8px;\">Người sửa lần cuối</td>");
                     body.append("<td style=\"border:1px solid #ddd;padding:8px;\">").append(escapeHtml(oldLastEditedByName)).append("</td>");
@@ -338,7 +337,6 @@ public class SOPDocumentsController {
                     body.append("<td style=\"border:1px solid #ddd;padding:8px;\">").append(escapeHtml(lastEditedAtStr)).append("</td>");
                     body.append("</tr>");
 
-                    // Files diff
                     java.util.List<String> oldFileNames = new java.util.ArrayList<>();
                     for (com.foxconn.sopchecklist.entity.SOPDocumentFiles f : oldFilesList) {
                         oldFileNames.add(f.getFileName());
@@ -366,12 +364,10 @@ public class SOPDocumentsController {
 
                     body.append("</table>");
 
-                    // Deep link to the updated document in the frontend
                     try {
                         Long sopId = updatedDocument.getSop() != null ? updatedDocument.getSop().getId() : null;
                         Integer docId = updatedDocument.getDocumentID();
                         if (sopId != null && docId != null) {
-                            // Use configured URL from application.properties
                             String appBase = appPublicUrl;
                             String link = appBase + "/sops/" + sopId + "?doc=" + docId;
                             body.append("<p style=\"margin-top:12px;\"><a href=\"").append(link)
@@ -394,7 +390,6 @@ public class SOPDocumentsController {
                     error.put("error", "DUPLICATE_NAME");
                     String duplicateName = updates.containsKey("title") ? (String) updates.get("title") : "";
                     if (duplicateName.isEmpty()) {
-                        // Fallback: try to get from existing document
                         try {
                             SOPDocuments doc = sopDocumentsService.findById(id);
                             if (doc != null) duplicateName = doc.getTitle();
@@ -442,7 +437,6 @@ public class SOPDocumentsController {
                     }
                 }
 
-                // CC from users
                 Object ccUserIds = payload.get("ccUserIds");
                 if (ccUserIds instanceof java.util.List<?>) {
                     for (Object o : (java.util.List<?>) ccUserIds) {
@@ -453,7 +447,6 @@ public class SOPDocumentsController {
                         } catch (Exception ignored) {}
                     }
                 }
-                // CC from groups
                 Object ccGroupIds = payload.get("ccGroupIds");
                 if (ccGroupIds instanceof java.util.List<?>) {
                     for (Object o : (java.util.List<?>) ccGroupIds) {
@@ -476,7 +469,6 @@ public class SOPDocumentsController {
                 String subject = "Thông báo đã tạo " + title;
                 Long sopId = doc.getSop() != null ? doc.getSop().getId() : null;
 
-                // Build rich HTML body like creation mail
                 StringBuilder body = new StringBuilder();
                 body.append("<div style=\"font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#333;\">");
                 body.append("<h3 style=\"margin:0 0 12px;\">").append(escapeHtml(subject)).append("</h3>");
@@ -526,7 +518,6 @@ public class SOPDocumentsController {
                 body.append("<p><strong>Trân trọng,</strong></p>");
                 body.append("</div>");
 
-                // Use custom to include CC
                 cronMailAllSendService.sendMailCustom("SOP", toCsv, ccCsv, null, subject, body.toString(), Long.valueOf(doc.getDocumentID()));
                 result.put("success", true);
                 result.put("sentTo", toCsv);
@@ -549,6 +540,80 @@ public class SOPDocumentsController {
                 .replace("'", "&#39;");
         }
         
+        @PostMapping("/{documentId}/move-file/{fileId}")
+        public ResponseEntity<Map<String, Object>> moveFile(
+                @PathVariable Integer documentId,
+                @PathVariable Long fileId,
+                @RequestBody Map<String, Object> payload) {
+            try {
+                SOPDocuments sourceDoc = sopDocumentsService.findById(documentId);
+                if (sourceDoc == null) {
+                    return ResponseEntity.notFound().build();
+                }
+
+                Integer targetDocId = (Integer) payload.get("targetDocumentId");
+                if (targetDocId == null) {
+                    Map<String, Object> error = new HashMap<>();
+                    error.put("error", "Vui lòng chọn tài liệu đích");
+                    return ResponseEntity.badRequest().body(error);
+                }
+
+                SOPDocuments targetDoc = sopDocumentsService.findById(targetDocId);
+                if (targetDoc == null) {
+                    Map<String, Object> error = new HashMap<>();
+                    error.put("error", "Không tìm thấy tài liệu đích");
+                    return ResponseEntity.notFound().build();
+                }
+
+                if (documentId.equals(targetDocId)) {
+                    Map<String, Object> error = new HashMap<>();
+                    error.put("error", "Không thể chuyển file đến cùng một tài liệu");
+                    return ResponseEntity.badRequest().body(error);
+                }
+
+                com.foxconn.sopchecklist.entity.SOPDocumentFiles fileToMove = null;
+                if (sourceDoc.getFiles() != null) {
+                    for (com.foxconn.sopchecklist.entity.SOPDocumentFiles file : sourceDoc.getFiles()) {
+                        if (file.getId().equals(fileId)) {
+                            fileToMove = file;
+                            break;
+                        }
+                    }
+                }
+
+                if (fileToMove == null) {
+                    Map<String, Object> error = new HashMap<>();
+                    error.put("error", "Không tìm thấy file");
+                    return ResponseEntity.notFound().build();
+                }
+
+                Users me = usersService.getCurrentAuthenticatedUser();
+
+                fileToMove.setDocument(targetDoc);
+                sopDocumentFilesRepository.save(fileToMove);
+
+                sourceDoc.setLastEditedAt(timeService.nowVietnam());
+                if (me != null) sourceDoc.setLastEditedBy(me);
+                targetDoc.setLastEditedAt(timeService.nowVietnam());
+                if (me != null) targetDoc.setLastEditedBy(me);
+                sopDocumentsService.update(sourceDoc);
+                sopDocumentsService.update(targetDoc);
+
+                Map<String, Object> result = new HashMap<>();
+                result.put("success", true);
+                result.put("message", "Chuyển file thành công");
+                result.put("fileName", fileToMove.getFileName());
+                result.put("sourceDocument", sourceDoc.getTitle());
+                result.put("targetDocument", targetDoc.getTitle());
+                
+                return ResponseEntity.ok(result);
+            } catch (Exception e) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("error", "Lỗi khi chuyển file: " + e.getMessage());
+                return ResponseEntity.badRequest().body(error);
+            }
+        }
+
         @DeleteMapping("/{id}")
         public ResponseEntity<Map<String, Object>> delete(@PathVariable Integer id) {
             try {
@@ -582,7 +647,6 @@ public class SOPDocumentsController {
                 
                 sopDocumentsService.delete(id);
 
-                // Send deletion mail (single-table style + action row)
                 try {
                     String sopName = existing.getSop() != null ? existing.getSop().getName() : "";
                     String subject = "Thông báo xóa tài liệu: " + sopName;
@@ -642,11 +706,9 @@ public class SOPDocumentsController {
 
                     body.append("</table>");
 
-                    // Deep link button to document list for this SOP after deletion
                     try {
                         Long sopId = existing.getSop() != null ? existing.getSop().getId() : null;
                         if (sopId != null) {
-                            // Use configured URL from application.properties
                             String appBase = appPublicUrl;
                             String link = appBase + "/sops/" + sopId;
                             body.append("<p style=\"margin-top:12px;\"><a href=\"").append(link)

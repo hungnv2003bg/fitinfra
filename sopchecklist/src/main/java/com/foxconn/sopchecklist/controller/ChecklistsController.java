@@ -48,12 +48,9 @@ public class ChecklistsController {
 
     @PostMapping
     public ResponseEntity<Checklists> create(@RequestBody Checklists body) {
-        // Cho phép startAt trong quá khứ để hỗ trợ nhập liệu hồi cứu
         body.setId(null);
         body.setCreatedAt(timeService.nowVietnam());
-        // Set scheduleUpdatedAt khi tạo mới để đảm bảo logic scheduling hoạt động đúng
         body.setScheduleUpdatedAt(timeService.nowVietnam());
-        // Preserve passed creator (username/userid string) if provided
         Checklists created = repository.save(body);
         computeNextSchedule(java.util.Arrays.asList(created));
         return ResponseEntity.created(URI.create("/api/checklists/" + created.getId())).body(created);
@@ -66,12 +63,9 @@ public class ChecklistsController {
             
             if (incoming.getTaskName() != null) existed.setTaskName(incoming.getTaskName());
             if (incoming.getWorkContent() != null) existed.setWorkContent(incoming.getWorkContent());
-            // Allowed fields per requirement
             if (incoming.getDueInDays() != null) existed.setDueInDays(incoming.getDueInDays());
             
-            // Track thay đổi thời gian bắt đầu
             if (incoming.getStartAt() != null) {
-                // Cho phép startAt trong quá khứ
                 if (!java.util.Objects.equals(existed.getStartAt(), incoming.getStartAt())) {
                     scheduleChanged = true;
                 }
@@ -81,7 +75,6 @@ public class ChecklistsController {
             if (incoming.getImplementers() != null) existed.setImplementers(incoming.getImplementers());
             if (incoming.getSopDocumentId() != null) existed.setSopDocumentId(incoming.getSopDocumentId());
             
-            // Track thay đổi thời gian lặp lại
             if (incoming.getRepeatId() != null) {
                 if (!java.util.Objects.equals(existed.getRepeatId(), incoming.getRepeatId())) {
                     scheduleChanged = true;
@@ -96,7 +89,6 @@ public class ChecklistsController {
                 existed.setLastEditedBy(incoming.getLastEditedBy());
             }
             
-            // Cập nhật thời gian thay đổi schedule nếu có thay đổi về thời gian
             if (scheduleChanged) {
                 existed.setScheduleUpdatedAt(timeService.nowVietnam());
             }

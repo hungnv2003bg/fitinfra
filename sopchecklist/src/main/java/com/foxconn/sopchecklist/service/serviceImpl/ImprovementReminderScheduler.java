@@ -41,9 +41,8 @@ public class ImprovementReminderScheduler {
     @Autowired
     private CronMailAllRepository cronMailAllRepository;
 
-    // Chạy mỗi 1 phút (để test) - TODO: Đổi lại thành mỗi ngày lúc 8:00 sáng sau khi test xong
-    // Cron pattern cũ: "0 0 8 * * ?" (8:00 sáng mỗi ngày)
-    @Scheduled(cron = "0 */1 * * * ?", zone = "Asia/Ho_Chi_Minh")
+    // Chạy mỗi ngày lúc 8:00 sáng và 2:00 chiều
+    @Scheduled(cron = "0 0 8,14 * * ?", zone = "Asia/Ho_Chi_Minh")
     @Transactional
     public void checkAndSendReminders() {
         LocalDateTime now = timeService.nowVietnam();

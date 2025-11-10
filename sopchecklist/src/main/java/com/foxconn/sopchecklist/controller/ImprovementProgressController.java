@@ -20,13 +20,11 @@ public class ImprovementProgressController {
         this.progressService = progressService;
     }
 
-    // List progress entries for an improvement
     @GetMapping("/improvements/{improvementId}/progress")
     public List<ImprovementProgress> list(@PathVariable Integer improvementId) {
         return progressService.listByImprovement(improvementId);
     }
 
-    // Create a new progress entry
     @PostMapping("/improvements/{improvementId}/progress")
     public ResponseEntity<ImprovementProgress> create(@PathVariable Integer improvementId,
                                                       @RequestBody Map<String, Object> body) {
@@ -38,7 +36,6 @@ public class ImprovementProgressController {
         return ResponseEntity.created(URI.create("/api/improvement-progress/" + created.getId())).body(created);
     }
 
-    // Update a progress entry
     @PatchMapping("/improvement-progress/{progressId}")
     public ImprovementProgress update(@PathVariable Long progressId, @RequestBody Map<String, Object> body) {
         Integer percent = body.get("percent") == null ? null : ((Number) body.get("percent")).intValue();
@@ -48,7 +45,6 @@ public class ImprovementProgressController {
         return progressService.update(progressId, percent, detail, status, updatedBy);
     }
 
-    // Delete a progress entry
     @DeleteMapping("/improvement-progress/{progressId}")
     public ResponseEntity<Void> delete(@PathVariable Long progressId) {
         progressService.delete(progressId);

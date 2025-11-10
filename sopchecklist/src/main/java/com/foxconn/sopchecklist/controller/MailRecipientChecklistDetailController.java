@@ -22,7 +22,6 @@ public class MailRecipientChecklistDetailController {
         System.out.println("DEBUG: API called - getChecklistDetailRecipients");
         
         try {
-            // Return recipients filtered by CHECKLISTDONE type
             List<MailRecipientAll> result = service.findByTypeMailRecipientTypeNameAndEnabledTrue("CHECKLISTDONE");
             System.out.println("DEBUG: Found " + result.size() + " CHECKLISTDONE recipients");
             return result;
@@ -47,19 +46,10 @@ public class MailRecipientChecklistDetailController {
         return allRecipients;
     }
 
-    @GetMapping("/test")
-    public Object testQuery() {
-        // Test direct query
-        List<MailRecipientAll> result = service.findByTypeMailRecipientTypeNameAndEnabledTrue("CHECKLISTDONE");
-        System.out.println("TEST: Direct query returned " + result.size() + " results");
-        return result;
-    }
-
     @PostMapping("/replace")
     public void replaceChecklistDetailRecipients(@RequestParam(value = "to", required = false) String to,
                                                 @RequestParam(value = "cc", required = false) String cc,
                                                 @RequestParam(value = "bcc", required = false) String bcc) {
-        // Replace all mail recipients for CHECKLISTDONE type
         service.replaceAllByEventType("CHECKLISTDONE", to, cc, bcc);
     }
 

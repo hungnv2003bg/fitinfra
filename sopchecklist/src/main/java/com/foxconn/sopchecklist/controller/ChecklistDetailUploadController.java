@@ -52,5 +52,4 @@ public class ChecklistDetailUploadController {
         return ResponseEntity.ok("ChecklistDetail Upload Backend is running!");
     }
 
-    // Removed legacy local download endpoint; /files/** serves files via FTP in FilesController
 }

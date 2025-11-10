@@ -144,7 +144,6 @@ axiosIns.interceptors.request.use(async config => {
 
 axiosIns.interceptors.response.use(
     response => {
-        // Reset inactivity timer on successful response
         resetInactivityTimer();
         return response;
     },
@@ -161,16 +160,13 @@ axiosIns.interceptors.response.use(
         const isRefreshEndpoint = reqUrl.includes('/api/auth/refresh');
         const isLoginEndpoint = reqUrl.includes('/api/auth/dangnhap');
 
-        // Try to refresh token on 401, except for refresh endpoint itself
         if (status === 401 && !isRefreshEndpoint && !isLoginEndpoint) {
             try {
                 const newToken = await refreshAccessToken();
-                // Retry the original request with new token
                 const originalRequest = error.config;
                 originalRequest.headers.Authorization = `Bearer ${newToken}`;
                 return axiosIns(originalRequest);
             } catch (refreshError) {
-                // Refresh failed, logout user
                 console.log('Token refresh failed, logging out...');
                 clearAuthData();
                 store.dispatch(userSlice.actions.dangXuat());
@@ -178,7 +174,6 @@ axiosIns.interceptors.response.use(
                 return Promise.reject(refreshError);
             }
         }
-
         // Only logout for authentication errors, not other errors
         // 401 on refresh endpoint means token is invalid
         // 403 that's not a business rule means permission denied
@@ -193,7 +188,6 @@ axiosIns.interceptors.response.use(
             return Promise.reject(error);
         }
 
-        // For all other errors (400, 404, 500, network errors, etc.), just reject without logout
         return Promise.reject(error);
     }
 );

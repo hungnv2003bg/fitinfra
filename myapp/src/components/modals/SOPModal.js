@@ -46,14 +46,12 @@ export default function SOPModal({ open, onCancel, onAdded }) {
         throw new Error(errorData.error || "Failed to create SOP");
       }
       
-      
     } catch (err) {
       openNotification("error", lang === 'zh' ? "系统" : "Hệ thống", lang === 'zh' ? "新增文档失败" : "Thêm tài liệu thất bại");
     } finally {
       setIsLoading(false);
     }
   };
-
 
   return (
     <>

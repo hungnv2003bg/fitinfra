@@ -51,7 +51,6 @@ function Login() {
 
                 const text = (messageText || '').toString().toLowerCase();
 
-                // Detect inactive account in both VI and ZH messages
                 const isInactive =
                     text.includes('chưa kích hoạt') ||
                     text.includes('chưa được kích hoạt') ||
@@ -69,7 +68,6 @@ function Login() {
                 ) {
                     setTypeError('invalid');
                 } else {
-                    // Fallback: treat unknown errors as invalid credentials on UI
                     setTypeError('invalid');
                 }
             } else {
@@ -222,8 +220,7 @@ function Login() {
                             >
                                 {t.login}
                             </Button>
-                           
-                            
+                                              
                             <div style={{ textAlign: "center", marginTop: "16px" }}>
                                 <span style={{ color: "#666" }}>{t.noAccountPrefix}</span>
                                 <Button type="link" onClick={() => setShowRegisterModal(true)} style={{ padding: 0 }}>

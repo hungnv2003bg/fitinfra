@@ -44,7 +44,6 @@ export default function AuthButtons() {
             setCurrentLimit(response.maxSizeMb);
             form.setFieldsValue({ maxFileSize: response.maxSizeMb });
             
-            // Also try to get the limit ID for updating
             const allLimits = await limitSizeService.getActiveLimitSizes();
             const fileUploadLimit = allLimits.find(limit => limit.settingName === 'FILE_UPLOAD_LIMIT');
             if (fileUploadLimit) {
@@ -52,7 +51,6 @@ export default function AuthButtons() {
             }
         } catch (error) {
             console.error('Error loading file upload limit:', error);
-            // Fallback to localStorage
             const fallbackLimit = parseInt(localStorage.getItem("maxFileSizeMB") || "10");
             setCurrentLimit(fallbackLimit);
             form.setFieldsValue({ maxFileSize: fallbackLimit });
@@ -61,7 +59,6 @@ export default function AuthButtons() {
             setLoading(false);
         }
     };
-
     const handleSettings = async () => {
         mailLoadedRef.current = false;
         mailChecklistLoadedRef.current = false;
@@ -70,7 +67,6 @@ export default function AuthButtons() {
         setIsSettingsModalVisible(true);
         await loadCurrentLimit();
     };
-
     const loadMailRecipients = async () => {
         if (mailLoadedRef.current) return;
         console.log('DEBUG: loadMailRecipients called');
@@ -183,7 +179,6 @@ export default function AuthButtons() {
                 });
             }
      
-          
             localStorage.setItem('maxFileSizeMB', values.maxFileSize.toString());
             setCurrentLimit(values.maxFileSize);
             
@@ -324,7 +319,7 @@ export default function AuthButtons() {
                     </Button>
                 </Dropdown>
 
-                {/* Settings modal with left menu and right content */}
+                {}
                 <Modal
                     title={settingsT.title}
                     open={isSettingsModalVisible}
@@ -368,7 +363,6 @@ export default function AuthButtons() {
                                     bcc: values.mailBcc || ''
                                 }
                             });
-                            // Save to localStorage like SOPs
                             localStorage.setItem('mailChecklistTo', values.mailTo || '');
                             localStorage.setItem('mailChecklistCc', values.mailCc || '');
                             localStorage.setItem('mailChecklistBcc', values.mailBcc || '');
@@ -437,8 +431,7 @@ export default function AuthButtons() {
                                 placement: 'bottomRight' 
                             });
                         }
-                    } : async () => {
-                        // Handle other cases - placeholder for now
+                    } : async () => {                   
                         const successMessage = lang === 'vi' ? 'Tính năng đang được phát triển!' : '功能正在开发中！';
                         notification.info({ message: successMessage, placement: 'bottomRight' });
                     }}

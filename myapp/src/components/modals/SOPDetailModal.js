@@ -59,13 +59,9 @@ export default function SOPDetailModal({ open, sop, onCancel }) {
     
     try {
       const cleanPath = filePath.startsWith('/files/') ? filePath.substring(7) : filePath;
-      
       const downloadUrl = API_CONFIG.getDownloadUrl(cleanPath);
-      
-      
       try {
         const response = await fetch(downloadUrl, { method: 'HEAD' });
-        
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }

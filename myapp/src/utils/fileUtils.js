@@ -1,33 +1,28 @@
 
 import { limitSizeService } from "../services/limitSizeService";
 
-// Cache for file upload limit
 let cachedFileUploadLimit = null;
 let lastFetchTime = 0;
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const CACHE_DURATION = 5 * 60 * 1000;
 
 export const getMaxFileSizeMB = async () => {
   const now = Date.now();
   
-  // Return cached value if still valid
   if (cachedFileUploadLimit && (now - lastFetchTime) < CACHE_DURATION) {
     return cachedFileUploadLimit;
   }
 
   try {
-    // Try to get from API first
     const response = await limitSizeService.getFileUploadLimit();
     cachedFileUploadLimit = response.maxSizeMb;
     lastFetchTime = now;
     
-    // Also update localStorage as fallback
     localStorage.setItem('maxFileSizeMB', cachedFileUploadLimit.toString());
     
     return cachedFileUploadLimit;
   } catch (error) {
     console.warn('Failed to fetch file upload limit from API, using localStorage fallback:', error);
     
-    // Fallback to localStorage
     const stored = localStorage.getItem('maxFileSizeMB');
     const fallbackValue = stored ? parseInt(stored) : 10;
     cachedFileUploadLimit = fallbackValue;
@@ -37,7 +32,6 @@ export const getMaxFileSizeMB = async () => {
   }
 };
 
-// Synchronous version for backward compatibility
 export const getMaxFileSizeMBSync = () => {
   try {
     const stored = typeof localStorage !== 'undefined' ? localStorage.getItem('maxFileSizeMB') : null;
@@ -82,7 +76,6 @@ export const getFileSizeLimitMessage = (lang = (typeof localStorage !== 'undefin
   return lang === 'zh' ? `文件大小限制：${maxSizeMB}MB` : `Giới hạn kích thước file: ${maxSizeMB}MB`;
 };
 
-// Async version for components that can handle async operations
 export const validateFileSizeAsync = async (file, lang = (typeof localStorage !== 'undefined' ? (localStorage.getItem('language') || 'vi') : 'vi')) => {
   const maxSizeMB = await getMaxFileSizeMB();
   const maxSizeBytes = maxSizeMB * 1024 * 1024;

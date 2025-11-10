@@ -45,8 +45,6 @@ function AppContent() {
     
     if (authData) {
       dispatch(userSlice.actions.dangNhap(authData));
-      // No need to call /api/auth/me here - the axios interceptor will handle token validation
-      // and auto-refresh if needed on subsequent API calls
     } else {
       dispatch(userSlice.actions.dangXuat());
     }
@@ -70,7 +68,6 @@ function AppContent() {
           .map(sop => sop.id.toString());
         setSopCategories(categories);
       } catch (error) {
-        // Don't logout on fetch error - let axios interceptor handle auth errors
         console.warn('Failed to fetch SOP categories:', error);
         if (hasPermissionAccess()) {
           setSopCategories(['cài-win', 'cài-network', 'hướng-dẫn-tải-phần-mềm']);
@@ -85,7 +82,6 @@ function AppContent() {
     }
   }, [dispatch]);
 
-  // Dynamic document title per route
   useEffect(() => {
     const { pathname } = location;
     let pageTitle = "";

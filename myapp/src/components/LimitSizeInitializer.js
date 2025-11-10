@@ -7,10 +7,8 @@ const LimitSizeInitializer = ({ children }) => {
 
   useEffect(() => {
     const initializeDefaultSettings = async () => {
-      // Check if user is authenticated before making API calls
       const authData = getAuthData();
       
-      // If not authenticated, skip initialization and mark as initialized
       if (!authData || !authData.token) {
         setInitialized(true);
         return;
@@ -24,10 +22,8 @@ const LimitSizeInitializer = ({ children }) => {
           console.log('Default limit size settings initialized');
         }
       } catch (error) {
-        // Log error but don't block the app from loading
         console.warn('Failed to initialize default limit size settings:', error);
       } finally {
-        // Always mark as initialized to prevent infinite loading
         setInitialized(true);
       }
     };

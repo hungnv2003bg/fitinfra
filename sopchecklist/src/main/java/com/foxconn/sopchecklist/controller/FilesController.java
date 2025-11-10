@@ -21,8 +21,6 @@ public class FilesController {
 
     private static final Logger logger = LoggerFactory.getLogger(FilesController.class);
     
-    // Always use FTP for serving files
-    
     @Value("${ftp.host:}")
     private String ftpHost;
     
@@ -41,7 +39,6 @@ public class FilesController {
     @Value("${ftp.upload-dir:uploads_fitsops}")
     private String ftpSopUploadDir;
 
-    // Add dedicated improvement dir as optional root
     @Value("${ftp.improvement-upload-dir:upload_fitimprovement}")
     private String ftpImprovementUploadDir;
 
@@ -74,7 +71,6 @@ public class FilesController {
             ftp.enterLocalPassiveMode();
             ftp.setFileType(FTP.BINARY_FILE_TYPE);
             
-            // Try improvement dir first, then SOP dir, then checklist dir
             ByteArrayResource resource = tryFetchFromRoot(ftp, ftpImprovementUploadDir, filePath);
             if (resource == null) {
                 resource = tryFetchFromRoot(ftp, ftpSopUploadDir, filePath);
@@ -129,7 +125,7 @@ public class FilesController {
             for (int i = 0; i < pathParts.length - 1; i++) {
                 if (!ftp.changeWorkingDirectory(pathParts[i])) {
                     logger.warn("Subdir not found under {}: {}", rootDir, pathParts[i]);
-                    return null; // fallback to another root
+                    return null; 
                 }
             }
             
@@ -152,7 +148,6 @@ public class FilesController {
     private String getContentType(String fileName) {
         String lowerFileName = fileName.toLowerCase();
         if (lowerFileName.endsWith(".txt")) {
-            // Force download for .txt instead of rendering inline in some browsers
             return "application/octet-stream";
         } else if (lowerFileName.endsWith(".pdf")) {
             return "application/pdf";

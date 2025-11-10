@@ -107,7 +107,6 @@ export default function MailChecklistDetailManagement() {
   const handleAdd = () => {
     setEditingRecipient(null);
     form.resetFields();
-    // Set default values
     form.setFieldsValue({
       enabled: true,
     });
@@ -147,7 +146,6 @@ export default function MailChecklistDetailManagement() {
   const handleSubmit = async (values) => {
     try {
       if (editingRecipient) {
-        // For update, keep the existing typeMailRecipient
         const payload = {
           email: values.email,
           type: values.type,
@@ -156,12 +154,10 @@ export default function MailChecklistDetailManagement() {
         };
         await axios.put(`/api/mail-recipients-checklist-detail/${editingRecipient.id}`, payload);
       } else {
-        // For add, get or create the CHECKLISTDONE type
         let typeRes;
         try {
           typeRes = await axios.get('/api/type-mail-recipients/by-type/CHECKLISTDONE');
         } catch (error) {
-          // If CHECKLISTDONE type doesn't exist, create it
           typeRes = await axios.post('/api/type-mail-recipients', {
             typeName: 'CHECKLISTDONE',
             description: 'Mail thông báo hoàn thành checklist',

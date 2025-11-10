@@ -19,9 +19,6 @@ public class LimitSizeController {
     @Autowired
     private LimitSizeService limitSizeService;
 
-    /**
-     * Lấy tất cả limit size settings
-     */
     @GetMapping
     public ResponseEntity<List<LimitSize>> getAllLimitSizes() {
         try {
@@ -32,9 +29,6 @@ public class LimitSizeController {
         }
     }
 
-    /**
-     * Lấy tất cả limit size settings đang active
-     */
     @GetMapping("/active")
     public ResponseEntity<List<LimitSize>> getActiveLimitSizes() {
         try {
@@ -45,9 +39,6 @@ public class LimitSizeController {
         }
     }
 
-    /**
-     * Lấy limit size theo ID
-     */
     @GetMapping("/{id}")
     public ResponseEntity<LimitSize> getLimitSizeById(@PathVariable Long id) {
         try {
@@ -59,9 +50,6 @@ public class LimitSizeController {
         }
     }
 
-    /**
-     * Lấy giới hạn kích thước file upload hiện tại
-     */
     @GetMapping("/file-upload-limit")
     public ResponseEntity<Map<String, Object>> getFileUploadLimit() {
         try {
@@ -75,9 +63,6 @@ public class LimitSizeController {
         }
     }
 
-    /**
-     * Tạo mới limit size setting
-     */
     @PostMapping
     public ResponseEntity<?> createLimitSize(@RequestBody LimitSize limitSize) {
         try {
@@ -91,9 +76,6 @@ public class LimitSizeController {
         }
     }
 
-    /**
-     * Cập nhật limit size setting
-     */
     @PutMapping("/{id}")
     public ResponseEntity<?> updateLimitSize(@PathVariable Long id, @RequestBody LimitSize limitSize) {
         try {
@@ -107,9 +89,6 @@ public class LimitSizeController {
         }
     }
 
-    /**
-     * Xóa limit size setting (soft delete)
-     */
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteLimitSize(@PathVariable Long id) {
         try {
@@ -123,9 +102,6 @@ public class LimitSizeController {
         }
     }
 
-    /**
-     * Xóa vĩnh viễn limit size setting
-     */
     @DeleteMapping("/{id}/permanent")
     public ResponseEntity<?> permanentDeleteLimitSize(@PathVariable Long id) {
         try {
@@ -139,9 +115,6 @@ public class LimitSizeController {
         }
     }
 
-    /**
-     * Kích hoạt/tắt limit size setting
-     */
     @PatchMapping("/{id}/toggle")
     public ResponseEntity<?> toggleLimitSizeStatus(@PathVariable Long id) {
         try {
@@ -155,9 +128,6 @@ public class LimitSizeController {
         }
     }
 
-    /**
-     * Kiểm tra kích thước file có vượt quá giới hạn không
-     */
     @PostMapping("/check-file-size")
     public ResponseEntity<?> checkFileSize(@RequestBody Map<String, Object> request) {
         try {
@@ -177,25 +147,20 @@ public class LimitSizeController {
         }
     }
 
-    /**
-     * Khởi tạo setting mặc định cho file upload limit
-     */
     @PostMapping("/init-default")
     public ResponseEntity<?> initDefaultSettings() {
         try {
-            // Kiểm tra xem đã có setting mặc định chưa
             Optional<LimitSize> existingLimit = limitSizeService.getLimitSizeBySettingName("FILE_UPLOAD_LIMIT");
             if (existingLimit.isPresent()) {
                 return ResponseEntity.ok(Map.of("message", "Setting mặc định đã tồn tại", "data", existingLimit.get()));
             }
 
-            // Tạo setting mặc định
             LimitSize defaultLimit = new LimitSize();
             defaultLimit.setSettingName("FILE_UPLOAD_LIMIT");
             defaultLimit.setMaxSizeMb(10L);
             defaultLimit.setDescription("Giới hạn kích thước file upload mặc định");
             defaultLimit.setIsActive(true);
-            defaultLimit.setCreatedBy(1L); // Admin user ID
+            defaultLimit.setCreatedBy(1L); 
 
             LimitSize createdLimit = limitSizeService.createLimitSize(defaultLimit);
             return ResponseEntity.ok(Map.of("message", "Khởi tạo setting mặc định thành công", "data", createdLimit));

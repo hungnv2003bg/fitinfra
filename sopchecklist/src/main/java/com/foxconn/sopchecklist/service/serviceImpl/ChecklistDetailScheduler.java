@@ -43,24 +43,21 @@ public class ChecklistDetailScheduler {
     @PersistenceContext
     private EntityManager entityManager;
 
-    // Chạy mỗi phút để sinh checklist detail nếu đến hạn
-    @Scheduled(fixedDelay = 60000)
+    // Chạy mỗi 5 phút để sinh checklist detail nếu đến hạn
+    @Scheduled(fixedDelay = 300000)
     @Transactional(readOnly = false)
     public void generateDetailsBySchedule() {
         LocalDateTime now = timeService.nowVietnam();
         try {
-            // Clear Hibernate cache để đảm bảo lấy dữ liệu mới nhất
             entityManager.clear();
             List<Checklists> all = checklistsRepository.findAll();
             log.info("ChecklistDetailScheduler: Found {} checklists at {}", all.size(), now);
             
             for (Checklists cl : all) {
-                // Refresh entity để đảm bảo có dữ liệu mới nhất
                 Checklists freshChecklist = checklistsRepository.findById(cl.getId()).orElse(cl);
                 log.info("Processing checklist: id={}, taskName={}, status={}, startAt={}, repeatId={}", 
                     freshChecklist.getId(), freshChecklist.getTaskName(), freshChecklist.getStatus(), 
                     freshChecklist.getStartAt(), freshChecklist.getRepeatId());
-                // Chỉ tạo checklist detail cho các checklist có status ACTIVE
                 if (!"ACTIVE".equals(freshChecklist.getStatus())) {
                     log.info("Skipping checklist {} (status: {})", freshChecklist.getId(), freshChecklist.getStatus());
                     continue;
@@ -72,7 +69,6 @@ public class ChecklistDetailScheduler {
 
                 boolean noRepeat = (freshChecklist.getRepeatId() == null);
 
-                // Nếu checklist KHÔNG lặp: luôn dùng thời gian startAt hiện tại để sinh, kể cả khi đã sửa startAt
                 if (noRepeat) {
                     LocalDateTime target = freshChecklist.getStartAt();
                     if (target != null && !target.isAfter(now)) {
@@ -86,7 +82,6 @@ public class ChecklistDetailScheduler {
                             d.setImplementer(imp);
                             d.setScheduledAt(target);
                             d.setCreatedAt(now);
-                            // deadline = scheduled_at + due_in_days (ưu tiên theo thời điểm phải làm)
                             Integer due = freshChecklist.getDueInDays();
                             if (due != null && due > 0) {
                                 d.setDeadlineAt(target.plusDays(due));
