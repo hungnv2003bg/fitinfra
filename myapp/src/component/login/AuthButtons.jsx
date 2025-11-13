@@ -20,6 +20,7 @@ export default function AuthButtons() {
     const [formMailChecklistDone] = Form.useForm();
     const [formMailSignup] = Form.useForm();
     const [formMailImprovementDone] = Form.useForm();
+    const [formMailAttendance] = Form.useForm();
     const [loading, setLoading] = useState(false);
     const [currentLimit, setCurrentLimit] = useState(null);
     const [limitId, setLimitId] = useState(null);
@@ -27,6 +28,7 @@ export default function AuthButtons() {
     const mailChecklistLoadedRef = useRef(false);
     const mailSignupLoadedRef = useRef(false);
     const mailImprovementLoadedRef = useRef(false);
+    const mailAttendanceLoadedRef = useRef(false);
 
     const handleLogoutClick = () => {
         dispatch(userSlice.actions.dangXuat());
@@ -63,6 +65,8 @@ export default function AuthButtons() {
         mailLoadedRef.current = false;
         mailChecklistLoadedRef.current = false;
         mailSignupLoadedRef.current = false;
+        mailImprovementLoadedRef.current = false;
+        mailAttendanceLoadedRef.current = false;
         setSelectedSettingKey('file');
         setIsSettingsModalVisible(true);
         await loadCurrentLimit();
@@ -154,6 +158,26 @@ export default function AuthButtons() {
         }
     };
 
+    const loadMailAttendanceRecipients = async () => {
+        if (mailAttendanceLoadedRef.current) return;
+        try {
+            const res = await axios.get('/api/mail-recipients-attendance');
+            const list = Array.isArray(res.data) ? res.data : [];
+            const mailTo = list.filter(r => r && r.enabled && r.type === 'TO').map(r => r.email).join(', ');
+            const mailCc = list.filter(r => r && r.enabled && r.type === 'CC').map(r => r.email).join(', ');
+            const mailBcc = list.filter(r => r && r.enabled && r.type === 'BCC').map(r => r.email).join(', ');
+            formMailAttendance.setFieldsValue({ mailTo, mailCc, mailBcc });
+            mailAttendanceLoadedRef.current = true;
+        } catch (e) {
+            console.error('Error loading attendance mail recipients:', e);
+            const mailTo = localStorage.getItem('mailAttendanceTo') || '';
+            const mailCc = localStorage.getItem('mailAttendanceCc') || '';
+            const mailBcc = localStorage.getItem('mailAttendanceBcc') || '';
+            formMailAttendance.setFieldsValue({ mailTo, mailCc, mailBcc });
+            mailAttendanceLoadedRef.current = true;
+        }
+    };
+
     const handleFileSizeOk = async () => {
         try {
             const values = await form.validateFields();
@@ -223,6 +247,7 @@ export default function AuthButtons() {
             mailSetting: "Thông báo nhận mail SOPs",
             mailChecklistDone: "Thông báo hoàn thành checklist",
             mailSignup: "Thông báo nhận mail đăng ký",
+            mailAttendance: "Thông báo nhận mail điểm danh",
             mailTo: "Danh sách mail nhận ",
             mailCc: "Danh sách mail cc",
             mailBcc: "Danh sách mail bcc"
@@ -239,6 +264,7 @@ export default function AuthButtons() {
             mailChecklistDone: "事件管理完成邮件通知设置",
             mailSignup: "注册邮件通知设置",
             mailImprovementDone: "改善完成邮件通知设置",
+            mailAttendance: "考勤邮件通知设置",
             mailTo: "收件人邮箱（To）",
             mailCc: "抄送邮箱（CC）",
             mailBcc: "密送邮箱（BCC）"
@@ -431,6 +457,33 @@ export default function AuthButtons() {
                                 placement: 'bottomRight' 
                             });
                         }
+                    } : selectedSettingKey === 'mailAttendance' ? async () => {
+                        const values = formMailAttendance.getFieldsValue();
+                        try {
+                            await axios.post('/api/mail-recipients-attendance/replace', null, {
+                                params: {
+                                    to: values.mailTo || '',
+                                    cc: values.mailCc || '',
+                                    bcc: values.mailBcc || ''
+                                }
+                            });
+                            localStorage.setItem('mailAttendanceTo', values.mailTo || '');
+                            localStorage.setItem('mailAttendanceCc', values.mailCc || '');
+                            localStorage.setItem('mailAttendanceBcc', values.mailBcc || '');
+                            const successMessage = lang === 'vi' ? 'Cài đặt đã được lưu thành công!' : '设置已保存成功！';
+                            notification.success({ 
+                                message: lang === 'vi' ? 'Hệ thống' : '系统', 
+                                description: successMessage, 
+                                placement: 'bottomRight' 
+                            });
+                        } catch (e) {
+                            const errMsg = e?.response?.data?.error || (lang === 'vi' ? 'Có lỗi xảy ra khi lưu cài đặt!' : '保存设置时出错！');
+                            notification.error({ 
+                                message: lang === 'vi' ? 'Hệ thống' : '系统', 
+                                description: errMsg, 
+                                placement: 'bottomRight' 
+                            });
+                        }
                     } : async () => {                   
                         const successMessage = lang === 'vi' ? 'Tính năng đang được phát triển!' : '功能正在开发中！';
                         notification.info({ message: successMessage, placement: 'bottomRight' });
@@ -501,10 +554,23 @@ export default function AuthButtons() {
                                     border: '1px solid #f0f0f0',
                                     borderRadius: 6,
                                     cursor: 'pointer',
+                                    marginBottom: 12,
                                     background: selectedSettingKey === 'mailSignup' ? '#e6f7ff' : '#fff'
                                 }}
                             >
                                 {settingsT.mailSignup}
+                            </div>
+                            <div
+                                onClick={async () => { setSelectedSettingKey('mailAttendance'); await loadMailAttendanceRecipients(); }}
+                                style={{
+                                    padding: 12,
+                                    border: '1px solid #f0f0f0',
+                                    borderRadius: 6,
+                                    cursor: 'pointer',
+                                    background: selectedSettingKey === 'mailAttendance' ? '#e6f7ff' : '#fff'
+                                }}
+                            >
+                                {settingsT.mailAttendance}
                             </div>
                         </div>
                         <div style={{ flex: 1 }}>
@@ -574,6 +640,19 @@ export default function AuthButtons() {
                             )}
                             {selectedSettingKey === 'mailImprovementDone' && (
                                 <Form form={formMailImprovementDone} layout="vertical">
+                                    <Form.Item name="mailTo" label={settingsT.mailTo}>
+                                        <Input.TextArea rows={3} placeholder="user1@example.com, user2@example.com" />
+                                    </Form.Item>
+                                    <Form.Item name="mailCc" label={settingsT.mailCc}>
+                                        <Input.TextArea rows={3} placeholder="cc1@example.com, cc2@example.com" />
+                                    </Form.Item>
+                                    <Form.Item name="mailBcc" label={settingsT.mailBcc}>
+                                        <Input.TextArea rows={3} placeholder="bcc1@example.com, bcc2@example.com" />
+                                    </Form.Item>
+                                </Form>
+                            )}
+                            {selectedSettingKey === 'mailAttendance' && (
+                                <Form form={formMailAttendance} layout="vertical">
                                     <Form.Item name="mailTo" label={settingsT.mailTo}>
                                         <Input.TextArea rows={3} placeholder="user1@example.com, user2@example.com" />
                                     </Form.Item>

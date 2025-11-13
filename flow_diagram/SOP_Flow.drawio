@@ -1,0 +1,130 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36" version="29.0.2">
+  <diagram name="SOP Flow" id="sop-flow">
+    <mxGraphModel dx="1123" dy="981" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1169" pageHeight="1654" background="none" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="SƠ ĐỒ LUỒNG SOPS (Standard Operating Procedures)" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1;fontColor=default;strokeColor=none;" parent="1" vertex="1">
+          <mxGeometry x="284" y="46" width="600" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="user-start" value="Người dùng truy cập SOP Page" style="rounded=1;whiteSpace=wrap;html=1;fontSize=14;fillColor=none;fontColor=default;strokeColor=default;fontStyle=0" parent="1" vertex="1">
+          <mxGeometry x="454" y="100" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="load-data" value="Hệ thống tải danh sách SOP" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fillColor=none;fontColor=default;strokeColor=default;fontStyle=0" parent="1" vertex="1">
+          <mxGeometry x="454" y="200" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="user-start" target="load-data" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="role-check" value="Kiểm tra vai trò" style="rhombus;whiteSpace=wrap;html=1;fontSize=14;fillColor=none;fontColor=default;strokeColor=default;fontStyle=0" parent="1" vertex="1">
+          <mxGeometry x="484" y="300" width="200" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="load-data" target="role-check" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="admin-path" value="ADMIN" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fillColor=none;fontColor=default;strokeColor=default;fontStyle=0;" parent="1" vertex="1">
+          <mxGeometry x="310" y="430" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-admin" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=2;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="role-check" target="admin-path" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="label-admin" value="ADMIN" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=0;fillColor=none;fontColor=default;strokeColor=none;" parent="1" vertex="1">
+          <mxGeometry x="411" y="343" width="60" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="user-path" value="USER" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fillColor=none;fontColor=default;strokeColor=default;fontStyle=0;" parent="1" vertex="1">
+          <mxGeometry x="750" y="430" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-user" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=2;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="role-check" target="user-path" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="label-user" value="USER" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=0;fillColor=none;fontColor=default;strokeColor=none;" parent="1" vertex="1">
+          <mxGeometry x="703" y="343" width="60" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="HgDbnwe__Fra4zOKqMy9-19" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="permission-check" target="end" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="permission-check" value="Kiểm tra quyền truy cập SOP" style="rhombus;whiteSpace=wrap;html=1;fontSize=14;fillColor=none;fontColor=default;strokeColor=default;fontStyle=0" parent="1" vertex="1">
+          <mxGeometry x="763" y="543" width="200" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-perm-check" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="user-path" target="permission-check" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="HgDbnwe__Fra4zOKqMy9-5" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="decision" target="action-view-sop" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="decision" value="Chọn hành động?" style="rhombus;whiteSpace=wrap;html=1;fontSize=14;fillColor=none;fontColor=default;strokeColor=default;fontStyle=0" parent="1" vertex="1">
+          <mxGeometry x="354" y="543" width="200" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-admin-decision" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="admin-path" target="decision" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="HgDbnwe__Fra4zOKqMy9-22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.75;entryDx=0;entryDy=0;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="action-create-sop" target="end" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="action-create-sop" value="Thêm mới / sửa" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fillColor=none;fontColor=default;strokeColor=default;fontStyle=0" parent="1" vertex="1">
+          <mxGeometry x="135" y="558" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-create-sop" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;edgeStyle=orthogonalEdgeStyle;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="decision" target="action-create-sop" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="action-view-sop" value="Xem SOP" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fillColor=none;fontColor=default;strokeColor=default;fontStyle=0" parent="1" vertex="1">
+          <mxGeometry x="582" y="558" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="HgDbnwe__Fra4zOKqMy9-21" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="action-permission" target="end" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="action-permission" value="Phân quyền SOP" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fillColor=none;fontColor=default;strokeColor=default;fontStyle=0;" parent="1" vertex="1">
+          <mxGeometry x="217" y="673" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-permission" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="decision" target="action-permission" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sop-detail-page" value="Truy cập trang chi tiết SOP" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fillColor=none;fontColor=default;strokeColor=default;fontStyle=0" parent="1" vertex="1">
+          <mxGeometry x="454" y="714" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-detail" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="action-view-sop" target="sop-detail-page" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="HgDbnwe__Fra4zOKqMy9-7" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="doc-decision" target="HgDbnwe__Fra4zOKqMy9-6" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="HgDbnwe__Fra4zOKqMy9-13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=1;exitDx=0;exitDy=0;entryX=0.75;entryY=0;entryDx=0;entryDy=0;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="doc-decision" target="end" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="doc-decision" value="Kiểm tra quyền thêm,sửa,xóa&amp;nbsp;&lt;div&gt;chi tiết sop&lt;/div&gt;" style="rhombus;html=1;fontSize=14;fillColor=none;fontColor=default;strokeColor=default;whiteSpace=wrap;fontStyle=0" parent="1" vertex="1">
+          <mxGeometry x="454" y="819" width="260" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-doc-decision" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="sop-detail-page" target="doc-decision" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="end" value="Hoàn thành" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fillColor=none;fontColor=default;strokeColor=default;fontStyle=0" parent="1" vertex="1">
+          <mxGeometry x="500" y="1053" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="HgDbnwe__Fra4zOKqMy9-1" value="" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="permission-check" target="action-view-sop" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="763" y="580" as="sourcePoint" />
+            <mxPoint x="550" y="580" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label-has-perm-user" value="Yes" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=0;fillColor=none;fontColor=default;strokeColor=none;" parent="1" vertex="1">
+          <mxGeometry x="722" y="558" width="55" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="HgDbnwe__Fra4zOKqMy9-18" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.25;entryY=0;entryDx=0;entryDy=0;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="HgDbnwe__Fra4zOKqMy9-6" target="end" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="HgDbnwe__Fra4zOKqMy9-6" value="Xem / thêm mới / sửa / xóa" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fillColor=none;fontColor=default;strokeColor=default;fontStyle=0" parent="1" vertex="1">
+          <mxGeometry x="450" y="944" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="HgDbnwe__Fra4zOKqMy9-8" value="Yes" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=0;fillColor=none;fontColor=default;strokeColor=none;" parent="1" vertex="1">
+          <mxGeometry x="474" y="899" width="55" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="HgDbnwe__Fra4zOKqMy9-14" value="No" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=0;fillColor=none;fontColor=default;strokeColor=none;" parent="1" vertex="1">
+          <mxGeometry x="642" y="904" width="55" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="HgDbnwe__Fra4zOKqMy9-20" value="No" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=0;fillColor=none;fontColor=default;strokeColor=none;" parent="1" vertex="1">
+          <mxGeometry x="870" y="653" width="55" height="20" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

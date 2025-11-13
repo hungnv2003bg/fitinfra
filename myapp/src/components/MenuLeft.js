@@ -9,6 +9,7 @@ import {
   ToolOutlined,
   UserOutlined,
   TeamOutlined,
+  ClockCircleOutlined,
 } from "@ant-design/icons";
 import "../styles/menu.css";
 import { useLanguage } from "../contexts/LanguageContext";
@@ -39,6 +40,9 @@ function MenuLeft() {
     if (path.startsWith("/groups")) {
       return "/groups";
     }
+    if (path.startsWith("/attendance")) {
+      return "/attendance";
+    }
     return path || "/dashboard";
   };
 
@@ -56,8 +60,8 @@ function MenuLeft() {
   };
 
   const labels = {
-    vi: { dashboard: "Dashboard", sops: "SOPS", checklist: "Checklist", improvement: "Improvement", account: "Account", groups: "Group" },
-    zh: { dashboard: "仪表盘", sops: "SOPS", checklist: "事件管理", improvement: "問題管理", account: "账户", groups: "群组" }
+    vi: { dashboard: "Dashboard", sops: "SOPS", checklist: "Checklist", improvement: "Improvement", account: "Account", groups: "Group", attendance: "Attendance" },
+    zh: { dashboard: "仪表盘", sops: "SOPS", checklist: "事件管理", improvement: "問題管理", account: "账户", groups: "群组", attendance: "考勤" }
   };
   const t = labels[lang];
 
@@ -67,6 +71,13 @@ function MenuLeft() {
       key: "/dashboard",
       icon: <DashboardOutlined />,
       label: <Link to="/dashboard">{t.dashboard}</Link>,
+    },
+
+    // Đưa Attendance lên ngay dưới Dashboard và hiển thị cho mọi người dùng đã đăng nhập
+    {
+      key: "/attendance",
+      icon: <ClockCircleOutlined />,
+      label: <Link to="/attendance">{t.attendance}</Link>,
     },
 
     {
@@ -96,7 +107,7 @@ function MenuLeft() {
         key: "/groups",
         icon: <TeamOutlined />,
         label: <Link to="/groups">{t.groups}</Link>,
-      }
+      },
     ] : []),
   ];
 

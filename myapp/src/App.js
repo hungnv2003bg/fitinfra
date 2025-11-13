@@ -17,6 +17,7 @@ import ChecklistDetailPage from "./pages/ChecklistDetailPage";
 import ProfilePage from "./pages/ProfilePage";
 import AccountPage from "./pages/AccountPage";
 import GroupPage from "./pages/GroupPage";
+import AttendancePage from "./pages/AttendancePage";
 import SettingsPage from "./pages/SettingsPage";
 import userSlice from "./redux/userSlice";
 import axios from "./plugins/axios";
@@ -99,6 +100,8 @@ function AppContent() {
       pageTitle = "Account";
     } else if (pathname.startsWith("/groups")) {
       pageTitle = "Groups";
+    } else if (pathname.startsWith("/attendance")) {
+      pageTitle = "Attendance";
     } else if (pathname.startsWith("/profile")) {
       pageTitle = "Profile";
     } else if (pathname.startsWith("/settings")) {
@@ -187,6 +190,10 @@ function AppContent() {
                     <GroupPage />
                   </ProtectedRoute>
                 }
+              />
+              <Route 
+                path="/attendance" 
+                element={<AttendancePage />}
               />
               <Route path="/checklist/:id/details" element={<ChecklistDetailPage />} />
               <Route path="/checklist-detail/:id" element={<ChecklistDetailPage />} />

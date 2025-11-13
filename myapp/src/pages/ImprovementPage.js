@@ -456,8 +456,11 @@ export default function ImprovementPage() {
     }
   };
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     try {
+      // Hiển thị thông báo đang xử lý
+      const hide = message.loading(lang === 'vi' ? 'Đang xuất Excel...' : '正在导出Excel...', 0);
+
       const headers = [
         'STT',
         t.stTaskName,
@@ -468,8 +471,100 @@ export default function ImprovementPage() {
         t.reviewDate,
         t.completed,
         t.status,
-        t.progress
+        t.progress,
+        lang === 'vi' ? 'Chi tiết tiến độ' : '进度详情'
       ];
+
+      // Lấy status options để map status code sang label cho progress
+      const progressStatusOptions = lang === 'vi' 
+        ? [
+            { value: 0, label: 'Chưa thực hiện' },
+            { value: 1, label: 'Đang thực hiện' },
+            { value: 2, label: 'Hoàn thành' },
+          ]
+        : [
+            { value: 0, label: '未实施' },
+            { value: 1, label: '进行中' },
+            { value: 2, label: '已完成' },
+          ];
+
+      const getProgressStatusLabel = (statusCode) => {
+        const option = progressStatusOptions.find(opt => opt.value === statusCode);
+        return option ? option.label : '-';
+      };
+
+      // Fetch progress details cho tất cả improvements
+      const progressPromises = filteredRows.map(async (row) => {
+        try {
+          const improvementId = row.improvementID || row.id;
+          const res = await axios.get(`/api/improvements/${encodeURIComponent(String(improvementId))}/progress`);
+          const progressList = Array.isArray(res.data) ? res.data : [];
+          // Sort theo thời gian tạo (từ cũ đến mới)
+          const sorted = [...progressList].sort((a, b) => {
+            const t1 = a && a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const t2 = b && b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return t1 - t2;
+          });
+          console.log(`Progress for improvement ${improvementId}:`, sorted.length, 'items');
+          return sorted;
+        } catch (error) {
+          console.error(`Error fetching progress for improvement ${row.improvementID || row.id}:`, error);
+          return [];
+        }
+      });
+
+      const allProgressData = await Promise.all(progressPromises);
+      console.log('All progress data:', allProgressData);
+
+      const escapeCSV = (str) => {
+        if (!str) return '';
+        const s = String(str);
+        if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+          return `"${s.replace(/"/g, '""')}"`;
+        }
+        return s;
+      };
+
+      // Format date chỉ ngày tháng năm (dd/MM/yyyy), bỏ giờ
+      const formatDateOnly = (dateValue) => {
+        if (!dateValue) return '-';
+        try {
+          const input = new Date(dateValue);
+          if (isNaN(input.getTime())) return '-';
+
+          const vnDate = new Date(
+            input.toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" })
+          );
+
+          const dd = String(vnDate.getDate()).padStart(2, '0');
+          const mm = String(vnDate.getMonth() + 1).padStart(2, '0');
+          const yyyy = vnDate.getFullYear();
+
+          return `${dd}/${mm}/${yyyy}`;
+        } catch {
+          return '-';
+        }
+      };
+
+      // Format progress details theo mẫu: "dd/MM/yyyy - Tiến độ% - Nội dung: Trạng thái"
+      const formatProgressDetails = (progressList) => {
+        if (!progressList || progressList.length === 0) return '-';
+        
+        console.log('Formatting progress list:', progressList.length, 'items');
+        
+        const formatted = progressList.map(progress => {
+          const date = progress.createdAt || progress.updatedAt;
+          const dateStr = formatDateOnly(date);
+          const percent = progress.progressPercent != null ? `${progress.progressPercent}%` : '-';
+          const content = progress.progressDetail || '-';
+          const status = getProgressStatusLabel(progress.status);
+          
+          return `${dateStr} - ${percent} - ${content}: ${status}`;
+        });
+        
+        console.log('Formatted progress:', formatted);
+        return formatted.join('\n');
+      };
 
       const csvRows = [
         headers.join(','),
@@ -483,14 +578,10 @@ export default function ImprovementPage() {
             ? row.collaborators.map(c => getResponsibleDisplay(c)).join('; ')
             : '-';
           
-          const escapeCSV = (str) => {
-            if (!str) return '';
-            const s = String(str);
-            if (s.includes(',') || s.includes('"') || s.includes('\n')) {
-              return `"${s.replace(/"/g, '""')}`;
-            }
-            return s;
-          };
+          // Lấy progress data tương ứng với row hiện tại
+          const progressList = allProgressData[index] || [];
+          console.log(`Row ${index} (ID: ${row.improvementID || row.id}):`, progressList.length, 'progress items');
+          const progressDetails = formatProgressDetails(progressList);
 
           return [
             stt,
@@ -502,7 +593,8 @@ export default function ImprovementPage() {
             escapeCSV(formatDateShortVN(row.plannedDueAt)),
             escapeCSV(row.completedAt ? formatDateShortVN(row.completedAt) : '-'),
             escapeCSV(statusDisplay),
-            escapeCSV(row.progress != null ? row.progress + '%' : '-')
+            escapeCSV(row.progress != null ? row.progress + '%' : '-'),
+            escapeCSV(progressDetails)
           ].join(',');
         })
       ];
@@ -522,6 +614,8 @@ export default function ImprovementPage() {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
+      
+      hide();
     } catch (error) {
       notification.error({
         message: t.sys,

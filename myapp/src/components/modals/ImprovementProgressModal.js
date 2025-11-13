@@ -201,10 +201,13 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
     try {
       const values = await form.validateFields();
 
+      // Kiểm tra tổng TẤT CẢ progress (không phân biệt status) không được vượt quá 100%
+      const newProgress = values.progress || 0;
       const totalFromList = Array.isArray(progressList)
-        ? progressList.filter(p => p.status === 2).reduce((sum, p) => sum + (typeof p.progressPercent === 'number' ? p.progressPercent : 0), 0)
+        ? progressList.reduce((sum, p) => sum + (typeof p.progressPercent === 'number' ? p.progressPercent : 0), 0)
         : 0;
-      if (totalFromList + (values.progress || 0) > 100) {
+      
+      if (totalFromList + newProgress > 100) {
         notification.error({ message: t.sys, description: t.exceedProgress, placement: 'bottomRight' });
         return;
       }
@@ -265,11 +268,20 @@ export default function ImprovementProgressModal({ open, record, onCancel, onSav
     try {
       const values = await editForm.validateFields();
 
-      const totalFromList = Array.isArray(progressList)
-        ? progressList.filter(p => p.status === 2).reduce((sum, p) => sum + (typeof p.progressPercent === 'number' ? p.progressPercent : 0), 0)
+      // Kiểm tra tổng TẤT CẢ progress (không phân biệt status) không được vượt quá 100%
+      const originalProgress = typeof editingRecord?.progressPercent === 'number' ? editingRecord.progressPercent : 0;
+      const newProgress = values.progress || 0;
+
+      // Tính tổng từ tất cả các progress khác (không bao gồm progress đang sửa)
+      const totalFromOtherProgress = Array.isArray(progressList)
+        ? progressList
+            .filter(p => p.id !== editingRecord?.id)
+            .reduce((sum, p) => sum + (typeof p.progressPercent === 'number' ? p.progressPercent : 0), 0)
         : 0;
-      const original = typeof editingRecord?.progressPercent === 'number' ? editingRecord.progressPercent : 0;
-      const newTotal = totalFromList - original + (values.progress || 0);
+
+      // Tổng mới = tổng các progress khác + progress mới
+      const newTotal = totalFromOtherProgress + newProgress;
+
       if (newTotal > 100) {
         notification.error({ message: t.sys, description: t.exceedEdit, placement: 'bottomRight' });
         return;

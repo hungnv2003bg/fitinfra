@@ -1,0 +1,238 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36" version="29.0.2">
+  <diagram name="Attendance Flow" id="attendance-flow">
+    <mxGraphModel dx="1572" dy="1374" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1169" pageHeight="1654" background="none" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="SƠ ĐỒ LUỒNG ĐIỂM DANH (ATTENDANCE)" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=0;fontColor=default;strokeColor=none;" parent="1" vertex="1">
+          <mxGeometry x="334" y="48" width="500" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="user-start" value="Người dùng truy cập Attendance Page" style="rounded=1;whiteSpace=wrap;html=1;fontSize=14;fillColor=none;fontColor=default;strokeColor=default;fontStyle=0" parent="1" vertex="1">
+          <mxGeometry x="454" y="100" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="load-data" value="Hệ thống tải dữ liệu điểm danh" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fillColor=none;fontColor=default;strokeColor=default;fontStyle=0" parent="1" vertex="1">
+          <mxGeometry x="454" y="200" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="user-start" target="load-data" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="tab-decision" value="Chọn tab?" style="rhombus;whiteSpace=wrap;html=1;fontSize=14;fillColor=none;fontColor=default;strokeColor=default;fontStyle=0" parent="1" vertex="1">
+          <mxGeometry x="484" y="300" width="200" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="load-data" target="tab-decision" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dashboard-tab" value="Dashboard" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fillColor=none;fontColor=default;strokeColor=default;fontStyle=0" parent="1" vertex="1">
+          <mxGeometry x="60" y="430" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="attendance-tab" value="Bảng điểm danh" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fillColor=none;fontColor=default;strokeColor=default;fontStyle=0" parent="1" vertex="1">
+          <mxGeometry x="514" y="437" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="tracking-tab" value="Danh sách theo dõi" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fillColor=none;fontColor=default;strokeColor=default;fontStyle=0" parent="1" vertex="1">
+          <mxGeometry x="848" y="430" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-dashboard" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=2;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="tab-decision" target="dashboard-tab" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-attendance" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=2;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="tab-decision" target="attendance-tab" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-tracking" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=2;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="tab-decision" target="tracking-tab" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="show-stats" value="Hiển thị thống kê theo ngày&lt;br&gt;- Tỷ lệ đi làm tổng thể&lt;br&gt;- Thống kê theo nhóm" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fillColor=none;fontColor=default;strokeColor=default;fontStyle=0" parent="1" vertex="1">
+          <mxGeometry x="35.5" y="540" width="189" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-stats" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="dashboard-tab" target="show-stats" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="role-check" value="Kiểm tra vai trò" style="rhombus;whiteSpace=wrap;html=1;fontSize=14;fillColor=none;fontColor=default;strokeColor=default;fontStyle=0" parent="1" vertex="1">
+          <mxGeometry x="487" y="525" width="200" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-role" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="attendance-tab" target="role-check" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="admin-path" value="ADMIN/MANAGER" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fillColor=none;fontColor=default;strokeColor=default;fontStyle=0;" parent="1" vertex="1">
+          <mxGeometry x="310" y="660" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="user-path" value="USER" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fillColor=none;fontColor=default;strokeColor=default;fontStyle=0;" parent="1" vertex="1">
+          <mxGeometry x="720" y="660" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-admin" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=2;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="role-check" target="admin-path" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-user" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=2;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="role-check" target="user-path" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="label-admin" value="ADMIN/MANAGER" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=0;fillColor=none;fontColor=default;strokeColor=none;" parent="1" vertex="1">
+          <mxGeometry x="375" y="565" width="120" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="label-user" value="USER" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=0;fillColor=none;fontColor=default;strokeColor=none;" parent="1" vertex="1">
+          <mxGeometry x="700" y="568" width="60" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="3sVhv9JZHSYLnIF4AbuJ-4" style="edgeStyle=elbowEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="action-decision" target="action-export" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="577" y="820" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="3sVhv9JZHSYLnIF4AbuJ-6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="action-decision" target="action-edit" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="400" y="896" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="action-decision" value="Chọn hành động?" style="rhombus;whiteSpace=wrap;html=1;fontSize=14;fillColor=none;fontColor=default;strokeColor=default;fontStyle=0" parent="1" vertex="1">
+          <mxGeometry x="350" y="760" width="200" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-admin-decision" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="admin-path" target="action-decision" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="action-view" value="Xem điểm danh" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fillColor=none;fontColor=default;strokeColor=default;fontStyle=0" parent="1" vertex="1">
+          <mxGeometry x="142" y="775" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="action-edit" value="Sửa điểm danh" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fillColor=none;fontColor=default;strokeColor=default;fontStyle=0" parent="1" vertex="1">
+          <mxGeometry x="191" y="871" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="action-export" value="Xuất PDF/Excel" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fillColor=none;fontColor=default;strokeColor=default;fontStyle=0" parent="1" vertex="1">
+          <mxGeometry x="507" y="840" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-view" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;edgeStyle=orthogonalEdgeStyle;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="action-decision" target="action-view" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="check-edit-permission" value="Kiểm tra quyền sửa" style="rhombus;whiteSpace=wrap;html=1;fontSize=14;fillColor=none;fontColor=default;strokeColor=default;fontStyle=0" parent="1" vertex="1">
+          <mxGeometry x="720" y="760" width="200" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-user-check" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="user-path" target="check-edit-permission" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="can-edit" value="Có thể sửa&lt;br&gt;(chính mình)" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fillColor=none;fontColor=default;strokeColor=default;fontStyle=0" parent="1" vertex="1">
+          <mxGeometry x="716" y="895" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="cannot-edit" value="Chỉ xem" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fillColor=none;fontColor=default;strokeColor=default;fontStyle=0" parent="1" vertex="1">
+          <mxGeometry x="905" y="890" width="100" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-can-edit" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="check-edit-permission" target="can-edit" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-cannot-edit" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="check-edit-permission" target="cannot-edit" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="label-yes-edit" value="Yes" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=0;fillColor=none;fontColor=default;strokeColor=none;" parent="1" vertex="1">
+          <mxGeometry x="747" y="855" width="40" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="label-no-edit" value="No" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=0;fillColor=none;fontColor=default;strokeColor=none;" parent="1" vertex="1">
+          <mxGeometry x="880" y="844" width="40" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="edit-attendance" value="Sửa thông tin điểm danh:&lt;br&gt;- Trạng thái&lt;br&gt;- Giờ vào/ra&lt;br&gt;- Ghi chú&lt;br&gt;Lưu ý: Chỉ sửa được trong 7 ngày" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fillColor=none;fontColor=default;strokeColor=default;fontStyle=0" parent="1" vertex="1">
+          <mxGeometry x="131" y="984" width="260" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-edit-attendance" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="action-edit" target="edit-attendance" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-edit-user" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0.25;entryDx=0;entryDy=0;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="can-edit" target="edit-attendance" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="tracking-decision" value="Chọn hành động?" style="rhombus;whiteSpace=wrap;html=1;fontSize=14;fillColor=none;fontColor=default;strokeColor=default;fontStyle=0" parent="1" vertex="1">
+          <mxGeometry x="900" y="535" width="200" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-tracking-decision" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="tracking-tab" target="tracking-decision" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="action-add-user" value="Thêm nhân viên&lt;br&gt;(ADMIN/MANAGER)" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fillColor=none;fontColor=default;strokeColor=default;fontStyle=0;" parent="1" vertex="1">
+          <mxGeometry x="1010" y="656" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="action-toggle-active" value="Bật/Tắt theo dõi" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fillColor=none;fontColor=default;strokeColor=default;fontStyle=0" parent="1" vertex="1">
+          <mxGeometry x="1121" y="760" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="action-change-shift" value="Thay đổi ca&lt;br&gt;(Ngày/Đêm)" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fillColor=none;fontColor=default;strokeColor=default;fontStyle=0" parent="1" vertex="1">
+          <mxGeometry x="1121" y="874" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-add-user" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="tracking-decision" target="action-add-user" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-toggle" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="action-add-user" target="action-toggle-active" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-shift" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="action-toggle-active" target="action-change-shift" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="auto-create" value="Tự động tạo điểm danh cho cho nhân viên đang HĐ" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fillColor=none;fontColor=default;strokeColor=default;fontStyle=0" parent="1" vertex="1">
+          <mxGeometry x="750" y="1107" width="140" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-auto-create" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="action-add-user" target="auto-create" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1080" y="1147" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="scheduler" value="Tạo điểm danh cho tất cả&lt;br&gt;nhân viên có trạng thái hoạt động" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fillColor=none;fontColor=default;strokeColor=default;fontStyle=0" parent="1" vertex="1">
+          <mxGeometry x="402" y="1097" width="260" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-scheduler" style="edgeStyle=elbowEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="edit-attendance" target="scheduler" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="261" y="1178" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="arrow-scheduler-auto" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="auto-create" target="scheduler" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="end" value="Hoàn thành" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fillColor=none;fontColor=default;strokeColor=default;fontStyle=0" parent="1" vertex="1">
+          <mxGeometry x="434" y="1455" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="arrow-end" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="scheduler" target="end" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="564" y="1199" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="arrow-end-view" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.25;entryY=0;entryDx=0;entryDy=0;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="action-view" target="end" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="109" y="800" />
+              <mxPoint x="109" y="1425" />
+              <mxPoint x="499" y="1425" />
+            </Array>
+            <mxPoint x="489" y="1387" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="arrow-end-export" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.75;entryY=0;entryDx=0;entryDy=0;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="action-export" target="end" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="577" y="907" />
+              <mxPoint x="686" y="907" />
+              <mxPoint x="686" y="1420" />
+              <mxPoint x="629" y="1420" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="arrow-end-cannot-edit" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0.25;entryDx=0;entryDy=0;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="cannot-edit" target="end" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="930" y="1471" />
+              <mxPoint x="694" y="1471" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="arrow-end-shift" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1191" y="1500" />
+            </Array>
+            <mxPoint x="1191" y="938" as="sourcePoint" />
+            <mxPoint x="694" y="1500" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="arrow-end-stats" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontColor=default;fontStyle=0;strokeColor=default;" parent="1" source="show-stats" target="end" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
