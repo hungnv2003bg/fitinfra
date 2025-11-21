@@ -23,6 +23,9 @@ export default function ChecklistPermissionModal({ open, onCancel, onSaved }) {
         ]);
         const allUsers = userRes.data || [];
         const nonAdminUsers = allUsers.filter(u => {
+          // Chỉ hiển thị user có trạng thái hoạt động
+          if (u.status !== "ACTIVE") return false;
+          // Loại bỏ ADMIN
           if (!u.roles || !Array.isArray(u.roles)) return true;
           return !u.roles.some(r => r.name && r.name.toUpperCase() === 'ADMIN');
         });

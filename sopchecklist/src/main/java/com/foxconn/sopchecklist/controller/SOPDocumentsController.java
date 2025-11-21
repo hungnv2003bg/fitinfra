@@ -295,26 +295,26 @@ public class SOPDocumentsController {
                 
                 try {
                     String sopName = updatedDocument.getSop() != null ? updatedDocument.getSop().getName() : "";
-                    String subject = "Thông báo thay đổi: " + sopName;
+                    String subject = "Thông báo thay đổi / 通知变更: " + sopName;
 
                     StringBuilder body = new StringBuilder();
                     body.append("<div style=\"font-family:Arial,Helvetica,sans-serif;color:#333;line-height:1.6;\">");
-                    body.append("<h2 style=\"margin:0 0 12px;\">Thông tin SOPs: ").append(escapeHtml(sopName)).append("</h2>");
+                    body.append("<h2 style=\"margin:0 0 12px;\">Thông tin SOPs / SOP信息: ").append(escapeHtml(sopName)).append("</h2>");
                     body.append("<table style=\"border-collapse:collapse;width:100%;\">");
                     body.append("<tr>");
-                    body.append("<th style=\"text-align:left;border:1px solid #ddd;padding:8px;background:#f5f5f5;\">Trường</th>");
-                    body.append("<th style=\"text-align:left;border:1px solid #ddd;padding:8px;background:#f5f5f5;\">Trước thay đổi</th>");
-                    body.append("<th style=\"text-align:left;border:1px solid #ddd;padding:8px;background:#f5f5f5;\">Sau khi thay đổi</th>");
+                    body.append("<th style=\"text-align:left;border:1px solid #ddd;padding:8px;background:#f5f5f5;\">Trường / 字段</th>");
+                    body.append("<th style=\"text-align:left;border:1px solid #ddd;padding:8px;background:#f5f5f5;\">Trước thay đổi / 变更前</th>");
+                    body.append("<th style=\"text-align:left;border:1px solid #ddd;padding:8px;background:#f5f5f5;\">Sau khi thay đổi / 变更后</th>");
                     body.append("</tr>");
 
                     body.append("<tr>");
-                    body.append("<td style=\"border:1px solid #ddd;padding:8px;\">Tên tài liệu</td>");
+                    body.append("<td style=\"border:1px solid #ddd;padding:8px;\">Tên tài liệu / 文档名称</td>");
                     body.append("<td style=\"border:1px solid #ddd;padding:8px;\">").append(escapeHtml(nullToEmpty(oldTitle))).append("</td>");
                     body.append("<td style=\"border:1px solid #ddd;padding:8px;\">").append(escapeHtml(nullToEmpty(updatedDocument.getTitle()))).append("</td>");
                     body.append("</tr>");
 
                     body.append("<tr>");
-                    body.append("<td style=\"border:1px solid #ddd;padding:8px;\">Mô tả</td>");
+                    body.append("<td style=\"border:1px solid #ddd;padding:8px;\">Mô tả / 描述</td>");
                     body.append("<td style=\"border:1px solid #ddd;padding:8px;\">").append(escapeHtml(nullToEmpty(oldDescription))).append("</td>");
                     body.append("<td style=\"border:1px solid #ddd;padding:8px;\">").append(escapeHtml(nullToEmpty(updatedDocument.getDescription()))).append("</td>");
                     body.append("</tr>");
@@ -326,13 +326,13 @@ public class SOPDocumentsController {
                         ? updatedDocument.getLastEditedBy().getFullName() : "";
 
                     body.append("<tr>");
-                    body.append("<td style=\"border:1px solid #ddd;padding:8px;\">Người sửa lần cuối</td>");
+                    body.append("<td style=\"border:1px solid #ddd;padding:8px;\">Người sửa lần cuối / 最后编辑人</td>");
                     body.append("<td style=\"border:1px solid #ddd;padding:8px;\">").append(escapeHtml(oldLastEditedByName)).append("</td>");
                     body.append("<td style=\"border:1px solid #ddd;padding:8px;\">").append(escapeHtml(lastEditedByStr)).append("</td>");
                     body.append("</tr>");
 
                     body.append("<tr>");
-                    body.append("<td style=\"border:1px solid #ddd;padding:8px;\">Thời gian sửa lần cuối</td>");
+                    body.append("<td style=\"border:1px solid #ddd;padding:8px;\">Thời gian sửa lần cuối / 最后编辑时间</td>");
                     body.append("<td style=\"border:1px solid #ddd;padding:8px;\">").append(escapeHtml(oldLastEditedAtStr)).append("</td>");
                     body.append("<td style=\"border:1px solid #ddd;padding:8px;\">").append(escapeHtml(lastEditedAtStr)).append("</td>");
                     body.append("</tr>");
@@ -349,7 +349,7 @@ public class SOPDocumentsController {
                     }
 
                     body.append("<tr>");
-                    body.append("<td style=\"border:1px solid #ddd;padding:8px;\">Tệp đính kèm</td>");
+                    body.append("<td style=\"border:1px solid #ddd;padding:8px;\">Tệp đính kèm / 附件</td>");
                     body.append("<td style=\"border:1px solid #ddd;padding:8px;\">");
                     body.append("<ul style=\"margin:0;padding-left:18px;\">");
                     for (String n : oldFileNames) body.append("<li>").append(escapeHtml(n)).append("</li>");
@@ -371,11 +371,11 @@ public class SOPDocumentsController {
                             String appBase = appPublicUrl;
                             String link = appBase + "/sops/" + sopId + "?doc=" + docId;
                             body.append("<p style=\"margin-top:12px;\"><a href=\"").append(link)
-                                .append("\" style=\"display:inline-block;background:#1677ff;color:#fff;padding:8px 12px;border-radius:4px;text-decoration:none;\">Mở tài liệu vừa cập nhật</a></p>");
+                                .append("\" style=\"display:inline-block;background:#1677ff;color:#fff;padding:8px 12px;border-radius:4px;text-decoration:none;\">Mở tài liệu vừa cập nhật / 打开刚更新的文档</a></p>");
                         }
                     } catch (Exception ignore2) {}
 
-                    body.append("<p><strong>Trân trọng,</strong></p>");
+                    body.append("<p><strong>Trân trọng / 此致,</strong></p>");
                     
                     body.append("</div>");
 
@@ -466,7 +466,7 @@ public class SOPDocumentsController {
                 String ccCsv = String.join(",", ccEmails);
 
                 String title = doc.getTitle() != null ? doc.getTitle() : ("Document " + id);
-                String subject = "Thông báo đã tạo " + title;
+                String subject = "Thông báo đã tạo / 通知创建 " + title;
                 Long sopId = doc.getSop() != null ? doc.getSop().getId() : null;
 
                 StringBuilder body = new StringBuilder();
@@ -474,28 +474,28 @@ public class SOPDocumentsController {
                 body.append("<h3 style=\"margin:0 0 12px;\">").append(escapeHtml(subject)).append("</h3>");
                 body.append("<table style=\"width:100%;border-collapse:collapse;\" border=\"1\" cellspacing=\"0\" cellpadding=\"6\">");
 
-                body.append("<tr><td style=\"width:160px;background:#fafafa;font-weight:bold;\">Tên tài liệu</td><td>")
+                body.append("<tr><td style=\"width:160px;background:#fafafa;font-weight:bold;\">Tên tài liệu / 文档名称</td><td>")
                     .append(escapeHtml(nullToEmpty(doc.getTitle()))).append("</td></tr>");
 
                 String desc = doc.getDescription();
                 String descDisplay = (desc != null && !desc.trim().isEmpty()) ? desc : "-";
-                body.append("<tr><td style=\"background:#fafafa;font-weight:bold;\">Mô tả</td><td>")
+                body.append("<tr><td style=\"background:#fafafa;font-weight:bold;\">Mô tả / 描述</td><td>")
                     .append(escapeHtml(descDisplay)).append("</td></tr>");
 
                 java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
                 String createdAtStr = doc.getCreatedAt() != null ? doc.getCreatedAt().format(fmt) : "";
-                body.append("<tr><td style=\"background:#fafafa;font-weight:bold;\">Ngày tạo</td><td>")
+                body.append("<tr><td style=\"background:#fafafa;font-weight:bold;\">Ngày tạo / 创建日期</td><td>")
                     .append(escapeHtml(createdAtStr)).append("</td></tr>");
 
                 String creator = "";
                 try { creator = doc.getCreatedBy() != null ? (doc.getCreatedBy().getFullName() != null ? doc.getCreatedBy().getFullName() : String.valueOf(doc.getCreatedBy().getUserID())) : ""; } catch (Exception ignore) {}
                 if (creator != null && !creator.trim().isEmpty()) {
-                    body.append("<tr><td style=\"background:#fafafa;font-weight:bold;\">Người tạo</td><td>")
+                    body.append("<tr><td style=\"background:#fafafa;font-weight:bold;\">Người tạo / 创建人</td><td>")
                         .append(escapeHtml(creator)).append("</td></tr>");
                 }
 
                 if (doc.getFiles() != null && !doc.getFiles().isEmpty()) {
-                    body.append("<tr><td style=\"background:#fafafa;font-weight:bold;\">Tệp đính kèm</td><td>");
+                    body.append("<tr><td style=\"background:#fafafa;font-weight:bold;\">Tệp đính kèm / 附件</td><td>");
                     body.append("<ul style=\"margin:0 0 0 18px;\">");
                     for (com.foxconn.sopchecklist.entity.SOPDocumentFiles f : doc.getFiles()) {
                         try {
@@ -512,10 +512,10 @@ public class SOPDocumentsController {
                     Integer docIdVal = doc.getDocumentID();
                     String link = appPublicUrl + "/sops/" + (sopId != null ? sopId : "") + "?doc=" + docIdVal;
                     body.append("<p style=\"margin-top:12px;\"><a href=\"").append(link)
-                        .append("\" style=\"display:inline-block;background:#1677ff;color:#fff;padding:8px 12px;border-radius:4px;text-decoration:none;\">Mở tài liệu</a></p>");
+                        .append("\" style=\"display:inline-block;background:#1677ff;color:#fff;padding:8px 12px;border-radius:4px;text-decoration:none;\">Mở tài liệu / 打开文档</a></p>");
                 } catch (Exception ignore) {}
 
-                body.append("<p><strong>Trân trọng,</strong></p>");
+                body.append("<p><strong>Trân trọng / 此致,</strong></p>");
                 body.append("</div>");
 
                 cronMailAllSendService.sendMailCustom("SOP", toCsv, ccCsv, null, subject, body.toString(), Long.valueOf(doc.getDocumentID()));
@@ -649,7 +649,7 @@ public class SOPDocumentsController {
 
                 try {
                     String sopName = existing.getSop() != null ? existing.getSop().getName() : "";
-                    String subject = "Thông báo xóa tài liệu: " + sopName;
+                    String subject = "Thông báo xóa tài liệu / 通知删除文档: " + sopName;
 
                     java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
                     String when = timeService.nowVietnam() != null ? timeService.nowVietnam().format(fmt) : "";
@@ -661,39 +661,39 @@ public class SOPDocumentsController {
 
                     StringBuilder body = new StringBuilder();
                     body.append("<div style=\"font-family:Arial,Helvetica,sans-serif;color:#333;line-height:1.6;\">");
-                    body.append("<h2 style=\"margin:0 0 12px;\">Thông tin SOPs: ")
+                    body.append("<h2 style=\"margin:0 0 12px;\">Thông tin SOPs / SOP信息: ")
                         .append(escapeHtml(sopName))
                         .append("</h2>");
                     body.append("<table style=\"border-collapse:collapse;width:100%;\">");
 
                     body.append("<tr>");
-                    body.append("<td style=\"border:1px solid #ddd;padding:8px;\">Hành động</td>");
-                    body.append("<td style=\"border:1px solid #ddd;padding:8px;\">ĐÃ XÓA TÀI LIỆU</td>");
+                    body.append("<td style=\"border:1px solid #ddd;padding:8px;\">Hành động / 操作</td>");
+                    body.append("<td style=\"border:1px solid #ddd;padding:8px;\">ĐÃ XÓA TÀI LIỆU / 已删除文档</td>");
                     body.append("</tr>");
 
                     body.append("<tr>");
-                    body.append("<td style=\"border:1px solid #ddd;padding:8px;\">Tên tài liệu</td>");
+                    body.append("<td style=\"border:1px solid #ddd;padding:8px;\">Tên tài liệu / 文档名称</td>");
                     body.append("<td style=\"border:1px solid #ddd;padding:8px;\">").append(escapeHtml(nullToEmpty(existing.getTitle()))).append("</td>");
                     body.append("</tr>");
 
                     body.append("<tr>");
-                    body.append("<td style=\"border:1px solid #ddd;padding:8px;\">Mô tả</td>");
+                    body.append("<td style=\"border:1px solid #ddd;padding:8px;\">Mô tả / 描述</td>");
                     body.append("<td style=\"border:1px solid #ddd;padding:8px;\">").append(escapeHtml(nullToEmpty(existing.getDescription()))).append("</td>");
                     body.append("</tr>");
 
                     body.append("<tr>");
-                    body.append("<td style=\"border:1px solid #ddd;padding:8px;\">Người thao tác</td>");
+                    body.append("<td style=\"border:1px solid #ddd;padding:8px;\">Người thao tác / 操作人</td>");
                     body.append("<td style=\"border:1px solid #ddd;padding:8px;\">").append(escapeHtml(who)).append("</td>");
                     body.append("</tr>");
 
                     body.append("<tr>");
-                    body.append("<td style=\"border:1px solid #ddd;padding:8px;\">Thời gian thao tác</td>");
+                    body.append("<td style=\"border:1px solid #ddd;padding:8px;\">Thời gian thao tác / 操作时间</td>");
                     body.append("<td style=\"border:1px solid #ddd;padding:8px;\">").append(escapeHtml(when)).append("</td>");
                     body.append("</tr>");
 
                     if (existing.getFiles() != null && !existing.getFiles().isEmpty()) {
                         body.append("<tr>");
-                        body.append("<td style=\"border:1px solid #ddd;padding:8px;\">Tệp đính kèm</td>");
+                        body.append("<td style=\"border:1px solid #ddd;padding:8px;\">Tệp đính kèm / 附件</td>");
                         body.append("<td style=\"border:1px solid #ddd;padding:8px;\">");
                         body.append("<ul style=\"margin:0;padding-left:18px;\">");
                         for (com.foxconn.sopchecklist.entity.SOPDocumentFiles f : existing.getFiles()) {
@@ -712,11 +712,11 @@ public class SOPDocumentsController {
                             String appBase = appPublicUrl;
                             String link = appBase + "/sops/" + sopId;
                             body.append("<p style=\"margin-top:12px;\"><a href=\"").append(link)
-                                .append("\" style=\"display:inline-block;background:#1677ff;color:#fff;padding:8px 12px;border-radius:4px;text-decoration:none;\">Mở danh sách tài liệu</a></p>");
+                                .append("\" style=\"display:inline-block;background:#1677ff;color:#fff;padding:8px 12px;border-radius:4px;text-decoration:none;\">Mở danh sách tài liệu / 打开文档列表</a></p>");
                         }
                     } catch (Exception ignore2) {}
 
-                    body.append("<p><strong>Trân trọng,</strong></p>");
+                    body.append("<p><strong>Trân trọng / 此致,</strong></p>");
                     
                     body.append("</div>");
 

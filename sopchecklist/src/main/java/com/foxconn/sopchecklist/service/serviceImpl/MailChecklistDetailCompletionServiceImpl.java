@@ -6,6 +6,7 @@ import com.foxconn.sopchecklist.entity.Group;
 import com.foxconn.sopchecklist.entity.MailRecipientAll;
 import com.foxconn.sopchecklist.entity.TypeCronMail;
 import com.foxconn.sopchecklist.entity.Users;
+import com.foxconn.sopchecklist.entity.UserStatus;
 import com.foxconn.sopchecklist.repository.ChecklistDetailRepository;
 import com.foxconn.sopchecklist.repository.CronMailAllRepository;
 import com.foxconn.sopchecklist.repository.GroupRepository;
@@ -59,7 +60,10 @@ public class MailChecklistDetailCompletionServiceImpl implements MailChecklistDe
         if (detail == null) return;
         
         // Load checklist detail với files để đảm bảo có đầy đủ thông tin
-        ChecklistDetail fullDetail = checklistDetailRepository.findById(detail.getId()).orElse(detail);
+        Long detailId = detail.getId();
+        ChecklistDetail fullDetail = detailId != null
+                ? checklistDetailRepository.findById(detailId).orElse(detail)
+                : detail;
         
         String subject = buildCompletionSubject(fullDetail);
         String body = buildCompletionBody(fullDetail);
@@ -76,7 +80,7 @@ public class MailChecklistDetailCompletionServiceImpl implements MailChecklistDe
 
     private String buildCompletionSubject(ChecklistDetail d) {
         String task = d.getTaskName() != null ? d.getTaskName() : "Checklist";
-        return "Thông báo hoàn thành checklist: " + task;
+        return "Thông báo hoàn thành checklist / 通知完成清单: " + task;
     }
 
     private String buildCompletionBody(ChecklistDetail d) {
@@ -91,27 +95,27 @@ public class MailChecklistDetailCompletionServiceImpl implements MailChecklistDe
 
         StringBuilder body = new StringBuilder();
         body.append("<div style=\"font-family:Arial,Helvetica,sans-serif;color:#333;line-height:1.6;\">");
-        body.append("<h2 style=\"margin:0 0 12px;color:#28a745;\">✓ Công việc đã hoàn thành</h2>");
+        body.append("<h2 style=\"margin:0 0 12px;color:#28a745;\">✓ Công việc đã hoàn thành / 工作已完成</h2>");
         body.append("<table style=\"border-collapse:collapse;width:100%;\">");
-        row(body, "Tên công việc", task);
-        row(body, "Nội dung công việc", content);
-        row(body, "Người thực hiện", implementer);
-        row(body, "Thời gian hoàn thành", completed);
-        row(body, "Hạn hoàn thành", deadline);
-        row(body, "Trạng thái", "✅ Hoàn thành");
+        row(body, "Tên công việc / 工作名称", task);
+        row(body, "Nội dung công việc / 工作内容", content);
+        row(body, "Người thực hiện / 执行人", implementer);
+        row(body, "Thời gian hoàn thành / 完成时间", completed);
+        row(body, "Hạn hoàn thành / 完成期限", deadline);
+        row(body, "Trạng thái / 状态", "✅ Hoàn thành / 已完成");
         
         if (note != null && !note.trim().isEmpty()) {
-            row(body, "Ghi chú", note);
+            row(body, "Ghi chú / 备注", note);
         }
         
         if (abnormalInfo != null && !abnormalInfo.trim().isEmpty()) {
-            row(body, "Thông tin bất thường", abnormalInfo);
+            row(body, "Thông tin bất thường / 异常信息", abnormalInfo);
         }
         
         // Thêm thông tin về files đính kèm
         String attachedFiles = getAttachedFilesInfo(d);
         if (attachedFiles != null && !attachedFiles.trim().isEmpty()) {
-            rowHtml(body, "Tệp đính kèm", attachedFiles);
+            rowHtml(body, "Tệp đính kèm / 附件", attachedFiles);
         }
         
         body.append("</table>");
@@ -124,19 +128,19 @@ public class MailChecklistDetailCompletionServiceImpl implements MailChecklistDe
                 String link = appBase + "/checklist-detail/" + detailId;
                 body.append("<p style=\"margin-top:12px;\"><a href=\"")
                         .append(link)
-                        .append("\" style=\"display:inline-block;background:#28a745;color:#fff;padding:8px 12px;border-radius:4px;text-decoration:none;\">Xem chi tiết checklist</a></p>");
+                        .append("\" style=\"display:inline-block;background:#28a745;color:#fff;padding:8px 12px;border-radius:4px;text-decoration:none;\">Xem chi tiết checklist / 查看清单详情</a></p>");
             }
         } catch (Exception ignore) {}
 
-        body.append("<p><strong>Trân trọng,</strong></p>");
-        body.append("<p><em>Hệ thống IT Management</em></p>");
+        body.append("<p><strong>Trân trọng / 此致,</strong></p>");
+        body.append("<p><em>Hệ thống IT Management / IT管理系统</em></p>");
         body.append("</div>");
         return body.toString();
     }
 
     private static void row(StringBuilder body, String name, String value) {
         body.append("<tr>");
-        body.append("<td style=\"border:1px solid #ddd;padding:8px;background:#f5f5f5;\">").append(escapeHtml(name)).append("</td>");
+        body.append("<td style=\"border:1px solid #ddd;padding:8px;background:#f5f5f5;\">").append(name).append("</td>");
         body.append("<td style=\"border:1px solid #ddd;padding:8px;\">").append(escapeHtml(value)).append("</td>");
         body.append("</tr>");
     }
@@ -144,7 +148,7 @@ public class MailChecklistDetailCompletionServiceImpl implements MailChecklistDe
     // Row với HTML content (không escape value)
     private static void rowHtml(StringBuilder body, String name, String htmlValue) {
         body.append("<tr>");
-        body.append("<td style=\"border:1px solid #ddd;padding:8px;background:#f5f5f5;\">").append(escapeHtml(name)).append("</td>");
+        body.append("<td style=\"border:1px solid #ddd;padding:8px;background:#f5f5f5;\">").append(name).append("</td>");
         body.append("<td style=\"border:1px solid #ddd;padding:8px;\">").append(htmlValue != null ? htmlValue : "").append("</td>");
         body.append("</tr>");
     }
@@ -323,6 +327,7 @@ public class MailChecklistDetailCompletionServiceImpl implements MailChecklistDe
                 Group grpById = groupRepository.findById(gid).orElse(null);
                 if (grpById != null && grpById.getUsers() != null) {
                     return grpById.getUsers().stream()
+                            .filter(this::isActiveUser)
                             .map(Users::getEmail)
                             .filter(e -> e != null && !e.trim().isEmpty())
                             .distinct()
@@ -342,6 +347,7 @@ public class MailChecklistDetailCompletionServiceImpl implements MailChecklistDe
         Group grp = groupRepository.findByNameIgnoreCase(name).orElse(null);
         if (grp != null && grp.getUsers() != null) {
             return grp.getUsers().stream()
+                    .filter(this::isActiveUser)
                     .map(Users::getEmail)
                     .filter(e -> e != null && !e.trim().isEmpty())
                     .distinct()
@@ -363,6 +369,7 @@ public class MailChecklistDetailCompletionServiceImpl implements MailChecklistDe
         // 4) Fallback: tìm theo fullName (duyệt danh sách)
         List<Users> all = usersRepository.findAll();
         String fromName = all.stream()
+                .filter(this::isActiveUser)
                 .filter(u -> u.getFullName() != null && u.getFullName().equalsIgnoreCase(name))
                 .map(Users::getEmail)
                 .filter(e -> e != null && !e.trim().isEmpty())
@@ -411,5 +418,9 @@ public class MailChecklistDetailCompletionServiceImpl implements MailChecklistDe
                 .replace(">", "&gt;")
                 .replace("\"", "&quot;")
                 .replace("'", "&#39;");
+    }
+
+    private boolean isActiveUser(Users user) {
+        return user != null && (user.getStatus() == null || user.getStatus() == UserStatus.ACTIVE);
     }
 }

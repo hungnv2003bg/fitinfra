@@ -143,19 +143,19 @@ public class AuthController {
             Users savedUser = usersService.save(newUser);
             
             try {
-                String subject = "Thông báo đăng ký tài khoản mới - " + savedUser.getFullName();
+                String subject = "Thông báo đăng ký tài khoản mới / 通知新账户注册 - " + savedUser.getFullName();
                 StringBuilder body = new StringBuilder();
                 body.append("<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:0 auto;\">");
-                body.append("<h2 style=\"color:#333;\">Thông báo đăng ký tài khoản mới</h2>");
-                body.append("<p>Hệ thống nhận được yêu cầu đăng ký tài khoản mới với thông tin sau:</p>");
+                body.append("<h2 style=\"color:#333;\">Thông báo đăng ký tài khoản mới / 通知新账户注册</h2>");
+                body.append("<p>Hệ thống nhận được yêu cầu đăng ký tài khoản mới với thông tin sau / 系统收到新账户注册请求，信息如下:</p>");
                 body.append("<table style=\"width:100%;border-collapse:collapse;margin:16px 0;\">");
-                body.append("<tr><td style=\"border:1px solid #ddd;padding:8px;background:#f5f5f5;\">Họ và tên</td><td style=\"border:1px solid #ddd;padding:8px;\">").append(escapeHtml(savedUser.getFullName())).append("</td></tr>");
-                body.append("<tr><td style=\"border:1px solid #ddd;padding:8px;background:#f5f5f5;\">Mã nhân viên</td><td style=\"border:1px solid #ddd;padding:8px;\">").append(escapeHtml(savedUser.getManv())).append("</td></tr>");
-                body.append("<tr><td style=\"border:1px solid #ddd;padding:8px;background:#f5f5f5;\">Email</td><td style=\"border:1px solid #ddd;padding:8px;\">").append(escapeHtml(savedUser.getEmail())).append("</td></tr>");
+                body.append("<tr><td style=\"border:1px solid #ddd;padding:8px;background:#f5f5f5;\">Họ và tên / 姓名</td><td style=\"border:1px solid #ddd;padding:8px;\">").append(escapeHtml(savedUser.getFullName())).append("</td></tr>");
+                body.append("<tr><td style=\"border:1px solid #ddd;padding:8px;background:#f5f5f5;\">Mã nhân viên / 员工编号</td><td style=\"border:1px solid #ddd;padding:8px;\">").append(escapeHtml(savedUser.getManv())).append("</td></tr>");
+                body.append("<tr><td style=\"border:1px solid #ddd;padding:8px;background:#f5f5f5;\">Email / 邮箱</td><td style=\"border:1px solid #ddd;padding:8px;\">").append(escapeHtml(savedUser.getEmail())).append("</td></tr>");
                 if (savedUser.getPhone() != null && !savedUser.getPhone().trim().isEmpty()) {
-                    body.append("<tr><td style=\"border:1px solid #ddd;padding:8px;background:#f5f5f5;\">Số điện thoại</td><td style=\"border:1px solid #ddd;padding:8px;\">").append(escapeHtml(savedUser.getPhone())).append("</td></tr>");
+                    body.append("<tr><td style=\"border:1px solid #ddd;padding:8px;background:#f5f5f5;\">Số điện thoại / 电话号码</td><td style=\"border:1px solid #ddd;padding:8px;\">").append(escapeHtml(savedUser.getPhone())).append("</td></tr>");
                 }
-                body.append("<tr><td style=\"border:1px solid #ddd;padding:8px;background:#f5f5f5;\">Trạng thái</td><td style=\"border:1px solid #ddd;padding:8px;\">").append(savedUser.getStatus() == UserStatus.INACTIVE ? "Chờ kích hoạt" : "Đã kích hoạt").append("</td></tr>");
+                body.append("<tr><td style=\"border:1px solid #ddd;padding:8px;background:#f5f5f5;\">Trạng thái / 状态</td><td style=\"border:1px solid #ddd;padding:8px;\">").append(savedUser.getStatus() == UserStatus.INACTIVE ? "Chờ kích hoạt / 待激活" : "Đã kích hoạt / 已激活").append("</td></tr>");
                 body.append("</table>");
                 
                 try {
@@ -164,12 +164,12 @@ public class AuthController {
                         String link = appPublicUrl + "/account?userId=" + userId;
                         body.append("<p style=\"margin-top:12px;\"><a href=\"")
                                 .append(link)
-                                .append("\" style=\"display:inline-block;background:#1890ff;color:#fff;padding:8px 12px;border-radius:4px;text-decoration:none;\">Xem chi tiết tài khoản</a></p>");
+                                .append("\" style=\"display:inline-block;background:#1890ff;color:#fff;padding:8px 12px;border-radius:4px;text-decoration:none;\">Xem chi tiết tài khoản / 查看账户详情</a></p>");
                     }
                 } catch (Exception ignore) {}
                 
-                body.append("<p><strong>Trân trọng,</strong></p>");
-                body.append("<p><em>Hệ thống IT Management</em></p>");
+                body.append("<p><strong>Trân trọng / 此致,</strong></p>");
+                body.append("<p><em>Hệ thống IT Management / IT管理系统</em></p>");
                 body.append("</div>");
                 
                 cronMailAllSendService.sendSignupMail(subject, body.toString(), savedUser.getUserID() != null ? savedUser.getUserID().longValue() : null);

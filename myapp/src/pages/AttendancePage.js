@@ -79,6 +79,16 @@ function AttendancePage() {
   const [presentPage, setPresentPage] = useState(1);
   const [absentPage, setAbsentPage] = useState(1);
   const PAGE_SIZE = 6;
+  // Pagination state for attendance table
+  const [attendancePagination, setAttendancePagination] = useState({
+    current: 1,
+    pageSize: 10,
+  });
+  // Pagination state for tracking table
+  const [trackingPagination, setTrackingPagination] = useState({
+    current: 1,
+    pageSize: 10,
+  });
   // Tracking filters
   const [trackingSearchText, setTrackingSearchText] = useState("");
   const [trackingGroupFilter, setTrackingGroupFilter] = useState(undefined);
@@ -240,6 +250,7 @@ function AttendancePage() {
       halfDay: 0,
       absent: 0,
       leave: 0,
+      weekendLeave: 0,
     };
 
     const isActiveRecord = (record) => {
@@ -255,12 +266,9 @@ function AttendancePage() {
         stats.halfDay++;
       } else if (status.includes("Vắng") || status.includes("Vắng mặt") || status.includes("缺勤")) {
         stats.absent++;
-      } else if (
-        status.includes("Nghỉ phép") ||
-        status.includes("请假") ||
-        status.includes("Nghỉ CN") ||
-        status.includes("周日休")
-      ) {
+      } else if (status.includes("Nghỉ CN") || status.includes("周日休")) {
+        stats.weekendLeave++;
+      } else if (status.includes("Nghỉ phép") || status.includes("请假")) {
         stats.leave++;
       }
     });
@@ -281,6 +289,7 @@ function AttendancePage() {
       halfDay: 0,
       absent: 0,
       leave: 0,
+      weekendLeave: 0,
     };
 
     filteredAttendanceData.forEach((record) => {
@@ -291,12 +300,9 @@ function AttendancePage() {
         filteredStats.halfDay++;
       } else if (status.includes("Vắng") || status.includes("Vắng mặt") || status.includes("缺勤")) {
         filteredStats.absent++;
-      } else if (
-        status.includes("Nghỉ phép") ||
-        status.includes("请假") ||
-        status.includes("Nghỉ CN") ||
-        status.includes("周日休")
-      ) {
+      } else if (status.includes("Nghỉ CN") || status.includes("周日休")) {
+        filteredStats.weekendLeave++;
+      } else if (status.includes("Nghỉ phép") || status.includes("请假")) {
         filteredStats.leave++;
       }
     });
@@ -445,7 +451,8 @@ function AttendancePage() {
   useEffect(() => {
     setPresentPage(1);
     setAbsentPage(1);
-  }, [groupFilter, selectedDate, attendanceData]);
+    setAttendancePagination(prev => ({ ...prev, current: 1 }));
+  }, [groupFilter, selectedDate, attendanceData, searchText, statusFilter]);
 
   // Lấy danh sách users
   const fetchUsers = async () => {
@@ -987,12 +994,18 @@ function AttendancePage() {
         shift = getUserShiftRaw(values.userId, null);
       }
       
+      // Tự động xóa giờ vào/ra nếu status là Vắng mặt, Nghỉ phép, hoặc Nghỉ CN
+      const status = values.status;
+      const shouldClearTime = status === "Vắng mặt" || status === "Nghỉ phép" || status === "Nghỉ CN" ||
+                              status === "缺勤" || status === "请假" || status === "周日休" ||
+                              status?.includes("Vắng") || status?.includes("Nghỉ phép") || status?.includes("Nghỉ CN");
+      
       const payload = {
         userId: values.userId,
         attendanceDate: values.attendanceDate.format("YYYY-MM-DD"),
         status: values.status,
-        clockInTime: values.clockInTime ? values.clockInTime.format("HH:mm") : null,
-        clockOutTime: values.clockOutTime ? values.clockOutTime.format("HH:mm") : null,
+        clockInTime: shouldClearTime ? null : (values.clockInTime ? values.clockInTime.format("HH:mm") : null),
+        clockOutTime: shouldClearTime ? null : (values.clockOutTime ? values.clockOutTime.format("HH:mm") : null),
         note: values.note || null,
         shift: shift || "Ngày",
       };
@@ -1050,7 +1063,7 @@ function AttendancePage() {
       return <Tag color="geekblue">{t.weekendOff}</Tag>;
     }
     if (status.includes("Nghỉ phép") || status.includes("请假")) {
-      return <Tag color="blue">{t.leave}</Tag>;
+      return <Tag color="orange">{t.leave}</Tag>;
     }
     return <Tag>{status}</Tag>;
   };
@@ -1428,8 +1441,8 @@ function AttendancePage() {
           </div>
 
           {/* Overall Stats Cards */}
-          <Row gutter={16} style={{ marginBottom: 24 }}>
-            <Col xs={24} sm={12} md={8} lg={5}>
+          <Row gutter={16} style={{ marginBottom: 24, display: 'flex', flexWrap: 'wrap' }}>
+            <Col xs={24} sm={12} md={8} style={{ flex: '1 1 0', minWidth: '200px' }}>
               <Card>
                 <Statistic
                   title={lang === "vi" ? "Tổng nhân viên" : "总员工数"}
@@ -1439,7 +1452,7 @@ function AttendancePage() {
                 />
               </Card>
             </Col>
-            <Col xs={24} sm={12} md={8} lg={5}>
+            <Col xs={24} sm={12} md={8} style={{ flex: '1 1 0', minWidth: '200px' }}>
               <Card>
                 <Statistic
                   title={t.presentCount}
@@ -1449,33 +1462,34 @@ function AttendancePage() {
                 />
               </Card>
             </Col>
-            <Col xs={24} sm={12} md={8} lg={5}>
+            <Col xs={24} sm={12} md={8} style={{ flex: '1 1 0', minWidth: '200px' }}>
               <Card>
                 <Statistic
                   title={t.halfDayCount}
                   value={stats.halfDay}
-                  prefix={<ExclamationCircleOutlined style={{ color: "#ff7a45" }} />}
+                  prefix={<ExclamationCircleOutlined style={{ color: "#8B4513" }} />}
+                  valueStyle={{ color: "#8B4513" }}
+                  titleStyle={{ color: "rgba(0, 0, 0, 0.85)" }}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={12} md={8} style={{ flex: '1 1 0', minWidth: '200px' }}>
+              <Card>
+                <Statistic
+                  title={t.leaveCount}
+                  value={stats.leave}
+                  prefix={<StarOutlined style={{ color: "#ff7a45" }} />}
                   valueStyle={{ color: "#ff7a45" }}
                 />
               </Card>
             </Col>
-            <Col xs={24} sm={12} md={8} lg={5}>
+            <Col xs={24} sm={12} md={8} style={{ flex: '1 1 0', minWidth: '200px' }}>
               <Card>
                 <Statistic
                   title={t.absentCount}
                   value={stats.absent}
                   prefix={<CloseCircleOutlined style={{ color: "#ff4d4f" }} />}
                   valueStyle={{ color: "#ff4d4f" }}
-                />
-              </Card>
-            </Col>
-            <Col xs={24} sm={12} md={8} lg={4}>
-              <Card>
-                <Statistic
-                  title={t.leaveCount}
-                  value={stats.leave}
-                  prefix={<StarOutlined style={{ color: "#1890ff" }} />}
-                  valueStyle={{ color: "#1890ff" }}
                 />
               </Card>
             </Col>
@@ -1581,6 +1595,16 @@ function AttendancePage() {
                       return status.includes("Vắng") || status.includes("Vắng mặt") || status.includes("缺勤");
                     }).length;
 
+                    const groupLeave = groupAttendance.filter((record) => {
+                      const status = record.status || "";
+                      return status.includes("Nghỉ phép") || status.includes("请假");
+                    }).length;
+
+                    const groupWeekendLeave = groupAttendance.filter((record) => {
+                      const status = record.status || "";
+                      return status.includes("Nghỉ CN") || status.includes("周日休");
+                    }).length;
+
                     const effectivePresent = groupPresent + groupHalfDay * 0.5;
                     const groupRate = groupUsers.length > 0 
                       ? Math.round((effectivePresent / groupUsers.length) * 100) 
@@ -1625,10 +1649,12 @@ function AttendancePage() {
                               }}
                             />
                           </div>
-                          <div style={{ color: "#666", fontSize: 12, whiteSpace: "nowrap" }}>
-                            {groupPresent} {lang === "vi" ? "có mặt" : "出勤"}, {groupHalfDay}{" "}
-                            {lang === "vi" ? "nửa ngày" : "半天"}, {groupAbsent}{" "}
-                            {lang === "vi" ? "vắng" : "缺勤"}
+                          <div style={{ fontSize: 12, whiteSpace: "nowrap" }}>
+                            <span style={{ color: "#52c41a" }}>{groupPresent} {lang === "vi" ? "có mặt" : "出勤"}</span>,{" "}
+                            <span style={{ color: "#666" }}>{groupHalfDay} {lang === "vi" ? "nửa ngày" : "半天"}</span>,{" "}
+                            <span style={{ color: "#ff7a45" }}>{groupLeave} {lang === "vi" ? "nghỉ phép" : "请假"}</span>,{" "}
+                            <span style={{ color: "#3b82f6" }}>{groupWeekendLeave} {lang === "vi" ? "nghỉ CN" : "周日休"}</span>,{" "}
+                            <span style={{ color: "#ff4d4f" }}>{groupAbsent} {lang === "vi" ? "vắng" : "缺勤"}</span>
                           </div>
                         </div>
                       </div>
@@ -1661,72 +1687,188 @@ function AttendancePage() {
                 ))}
               </Select>
             </div>
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: 16,
-                justifyContent: "center",
-                padding: "20px 0",
-              }}
-            >
-              {activeAttendanceData
-                 .filter((record) => {
-                   const gid = getUserGroupId(record.user || record.userId);
-                   return !groupFilter || groupFilter === "all" || String(gid) === String(groupFilter);
-                 })
-                 .map((record) => {
-                const userId = record.user?.userID || record.userId;
-                const foundUser = users.find((u) => u.userID === userId);
-                const userName = foundUser ? foundUser.fullName : "-";
-                const groupName = getUserGroup(record.user || record.userId);
-                const shiftName = getUserShift(record.user || record.userId, record);
-                
-                const tooltipContent = (
-                  <div style={{ textAlign: "left" }}>
-                    <div style={{ fontWeight: 500, marginBottom: 4 }}>{userName}</div>
-                    <div style={{ fontSize: 12, marginBottom: 2 }}>
-                      {lang === "vi" ? "Nhóm" : "组"}: {groupName}
-                    </div>
-                    <div style={{ fontSize: 12 }}>
-                      {lang === "vi" ? "Ca làm việc" : "班次"}: {shiftName}
-                    </div>
-                  </div>
-                );
-                
-                return (
+            <Row gutter={24}>
+              {/* Ca ngày - Wider section */}
+              <Col xs={24} lg={16}>
+                <div style={{ marginBottom: 16 }}>
+                  <h5 style={{ margin: "0 0 12px 0", fontSize: 16, fontWeight: 500 }}>
+                    {lang === "vi" ? "Ca ngày" : "日班"}
+                  </h5>
                   <div
-                    key={record.id}
                     style={{
                       display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      gap: 8,
-                      minWidth: 80,
+                      flexWrap: "wrap",
+                      gap: 16,
+                      justifyContent: "flex-start",
+                      padding: "20px",
+                      backgroundColor: "#fafafa",
+                      borderRadius: 8,
+                      minHeight: 120,
                     }}
                   >
-                    <Tooltip title={tooltipContent} placement="top">
-                      <div style={{ cursor: "pointer" }}>
-                        <PersonIcon status={record.status} size="md" />
-                      </div>
-                    </Tooltip>
-                    <div
-                      style={{
-                        textAlign: "center",
-                        fontSize: 12,
-                        color: "#666",
-                        maxWidth: 80,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {userName.split(" ").pop()}
-                    </div>
+                    {activeAttendanceData
+                       .filter((record) => {
+                         const gid = getUserGroupId(record.user || record.userId);
+                         const shiftRaw = getUserShiftRaw(record.user || record.userId, record);
+                         return (shiftRaw === "Ngày" || shiftRaw === "Ngay" || !shiftRaw) &&
+                                (!groupFilter || groupFilter === "all" || String(gid) === String(groupFilter));
+                       })
+                       .map((record) => {
+                        const userId = record.user?.userID || record.userId;
+                        const foundUser = users.find((u) => u.userID === userId);
+                        const userName = foundUser ? foundUser.fullName : "-";
+                        const groupName = getUserGroup(record.user || record.userId);
+                        const shiftName = getUserShift(record.user || record.userId, record);
+                        
+                        const tooltipContent = (
+                          <div style={{ textAlign: "left" }}>
+                            <div style={{ fontWeight: 500, marginBottom: 4 }}>{userName}</div>
+                            <div style={{ fontSize: 12, marginBottom: 2 }}>
+                              {lang === "vi" ? "Nhóm" : "组"}: {groupName}
+                            </div>
+                            <div style={{ fontSize: 12 }}>
+                              {lang === "vi" ? "Ca làm việc" : "班次"}: {shiftName}
+                            </div>
+                          </div>
+                        );
+                        
+                        return (
+                          <div
+                            key={record.id}
+                            style={{
+                              display: "flex",
+                              flexDirection: "column",
+                              alignItems: "center",
+                              gap: 8,
+                              minWidth: 80,
+                            }}
+                          >
+                            <Tooltip title={tooltipContent} placement="top">
+                              <div style={{ cursor: "pointer" }}>
+                                <PersonIcon status={record.status} size="md" />
+                              </div>
+                            </Tooltip>
+                            <div
+                              style={{
+                                textAlign: "center",
+                                fontSize: 12,
+                                color: "#666",
+                                maxWidth: 80,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {userName.split(" ").pop()}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    {activeAttendanceData
+                       .filter((record) => {
+                         const gid = getUserGroupId(record.user || record.userId);
+                         const shiftRaw = getUserShiftRaw(record.user || record.userId, record);
+                         return (shiftRaw === "Ngày" || shiftRaw === "Ngay" || !shiftRaw) &&
+                                (!groupFilter || groupFilter === "all" || String(gid) === String(groupFilter));
+                       }).length === 0 && (
+                        <div style={{ width: "100%", textAlign: "center", color: "#999", padding: 20 }}>
+                          {lang === "vi" ? "Không có nhân viên ca ngày" : "没有日班员工"}
+                        </div>
+                      )}
                   </div>
-                );
-              })}
-            </div>
+                </div>
+              </Col>
+              {/* Ca đêm - Narrower section */}
+              <Col xs={24} lg={8}>
+                <div style={{ marginBottom: 16 }}>
+                  <h5 style={{ margin: "0 0 12px 0", fontSize: 16, fontWeight: 500 }}>
+                    {lang === "vi" ? "Ca đêm" : "夜班"}
+                  </h5>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: 16,
+                      justifyContent: "flex-start",
+                      padding: "20px",
+                      backgroundColor: "#fafafa",
+                      borderRadius: 8,
+                      minHeight: 120,
+                    }}
+                  >
+                    {activeAttendanceData
+                       .filter((record) => {
+                         const gid = getUserGroupId(record.user || record.userId);
+                         const shiftRaw = getUserShiftRaw(record.user || record.userId, record);
+                         return shiftRaw === "Đêm" &&
+                                (!groupFilter || groupFilter === "all" || String(gid) === String(groupFilter));
+                       })
+                       .map((record) => {
+                        const userId = record.user?.userID || record.userId;
+                        const foundUser = users.find((u) => u.userID === userId);
+                        const userName = foundUser ? foundUser.fullName : "-";
+                        const groupName = getUserGroup(record.user || record.userId);
+                        const shiftName = getUserShift(record.user || record.userId, record);
+                        
+                        const tooltipContent = (
+                          <div style={{ textAlign: "left" }}>
+                            <div style={{ fontWeight: 500, marginBottom: 4 }}>{userName}</div>
+                            <div style={{ fontSize: 12, marginBottom: 2 }}>
+                              {lang === "vi" ? "Nhóm" : "组"}: {groupName}
+                            </div>
+                            <div style={{ fontSize: 12 }}>
+                              {lang === "vi" ? "Ca làm việc" : "班次"}: {shiftName}
+                            </div>
+                          </div>
+                        );
+                        
+                        return (
+                          <div
+                            key={record.id}
+                            style={{
+                              display: "flex",
+                              flexDirection: "column",
+                              alignItems: "center",
+                              gap: 8,
+                              minWidth: 80,
+                            }}
+                          >
+                            <Tooltip title={tooltipContent} placement="top">
+                              <div style={{ cursor: "pointer" }}>
+                                <PersonIcon status={record.status} size="md" />
+                              </div>
+                            </Tooltip>
+                            <div
+                              style={{
+                                textAlign: "center",
+                                fontSize: 12,
+                                color: "#666",
+                                maxWidth: 80,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {userName.split(" ").pop()}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    {activeAttendanceData
+                       .filter((record) => {
+                         const gid = getUserGroupId(record.user || record.userId);
+                         const shiftRaw = getUserShiftRaw(record.user || record.userId, record);
+                         return shiftRaw === "Đêm" &&
+                                (!groupFilter || groupFilter === "all" || String(gid) === String(groupFilter));
+                       }).length === 0 && (
+                        <div style={{ width: "100%", textAlign: "center", color: "#999", padding: 20 }}>
+                          {lang === "vi" ? "Không có nhân viên ca đêm" : "没有夜班员工"}
+                        </div>
+                      )}
+                  </div>
+                </div>
+              </Col>
+            </Row>
             <div
               style={{
                 display: "flex",
@@ -1795,7 +1937,7 @@ function AttendancePage() {
                             <div>
                               <div style={{ fontWeight: 500 }}>{userName}</div>
                               <div style={{ fontSize: 12, color: "#999" }}>
-                                {lang === "vi" ? "Nhóm" : "组"} {groupName}
+                                {groupName}
                                 {record.clockInTime && ` • ${lang === "vi" ? "Vào" : "进入"}: ${record.clockInTime}`}
                                 {record.clockOutTime && ` • ${lang === "vi" ? "Ra" : "离开"}: ${record.clockOutTime}`}
                               </div>
@@ -1858,7 +2000,7 @@ function AttendancePage() {
                             <div>
                               <div style={{ fontWeight: 500 }}>{userName}</div>
                               <div style={{ fontSize: 12, color: "#999" }}>
-                                {lang === "vi" ? "Nhóm" : "组"} {groupName}
+                                {groupName}
                                 {record.note && ` • ${record.note}`}
                               </div>
                             </div>
@@ -2018,7 +2160,19 @@ function AttendancePage() {
             dataSource={filteredAttendanceData}
             rowKey="id"
             loading={loading}
-            pagination={false}
+            pagination={{
+              current: attendancePagination.current,
+              pageSize: attendancePagination.pageSize,
+              total: filteredAttendanceData.length,
+              showSizeChanger: true,
+              showQuickJumper: true,
+            }}
+            onChange={(paginationConfig) => {
+              setAttendancePagination({
+                current: paginationConfig.current,
+                pageSize: paginationConfig.pageSize,
+              });
+            }}
           />
         </div>
       )}
@@ -2095,9 +2249,17 @@ function AttendancePage() {
             rowKey="id"
             loading={loadingUserAttendance}
             pagination={{
-              pageSize: 10,
+              current: trackingPagination.current,
+              pageSize: trackingPagination.pageSize,
+              total: filteredTrackingList.length,
               showSizeChanger: true,
               showQuickJumper: true,
+            }}
+            onChange={(paginationConfig) => {
+              setTrackingPagination({
+                current: paginationConfig.current,
+                pageSize: paginationConfig.pageSize,
+              });
             }}
           />
         </div>
@@ -2152,7 +2314,47 @@ function AttendancePage() {
             label={t.status}
             rules={[{ required: true, message: t.statusRequired }]}
           >
-            <Select placeholder={t.status}>
+            <Select 
+              placeholder={t.status}
+              onChange={(value) => {
+                // Tự động xóa giờ vào/ra khi chọn Vắng mặt, Nghỉ phép, hoặc Nghỉ CN
+                if (value === "Vắng mặt" || value === "Nghỉ phép" || value === "Nghỉ CN" ||
+                    value === "缺勤" || value === "请假" || value === "周日休") {
+                  form.setFieldsValue({
+                    clockInTime: null,
+                    clockOutTime: null
+                  });
+                } else if (value === "Có mặt" || value === "Đi muộn" || value === "Nửa ngày" ||
+                           value === "出勤" || value === "迟到" || value === "半天") {
+                  // Tự động set giờ vào/ra khi chọn Có mặt, Đi muộn, hoặc Nửa ngày
+                  const formValues = form.getFieldsValue();
+                  const userId = formValues.userId;
+                  const record = editingRecord;
+                  
+                  // Lấy shift từ record hoặc userAttendanceList
+                  let shift = null;
+                  if (record && record.shift) {
+                    shift = record.shift;
+                  } else if (userId) {
+                    shift = getUserShiftRaw(userId, null);
+                  }
+                  
+                  // Xác định giờ vào/ra dựa trên ca
+                  const isNightShift = shift === "Đêm" || shift === "Night";
+                  const defaultClockIn = isNightShift ? dayjs("20:00", "HH:mm") : dayjs("08:00", "HH:mm");
+                  const defaultClockOut = isNightShift ? dayjs("05:00", "HH:mm") : dayjs("17:00", "HH:mm");
+                  
+                  // Chỉ set nếu chưa có giá trị
+                  const currentClockIn = formValues.clockInTime;
+                  const currentClockOut = formValues.clockOutTime;
+                  
+                  form.setFieldsValue({
+                    clockInTime: currentClockIn || defaultClockIn,
+                    clockOutTime: currentClockOut || defaultClockOut
+                  });
+                }
+              }}
+            >
               <Option value="Có mặt">{t.present}</Option>
               <Option value="Đi muộn">{t.late}</Option>
               <Option value="Nửa ngày">{t.halfDay}</Option>

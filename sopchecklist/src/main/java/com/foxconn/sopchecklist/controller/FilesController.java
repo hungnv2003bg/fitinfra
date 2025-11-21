@@ -48,10 +48,20 @@ public class FilesController {
             String requestURI = request.getRequestURI();
             String filePath = requestURI.substring(requestURI.indexOf("/files/") + 7);
             
-            filePath = java.net.URLDecoder.decode(filePath, "UTF-8");
+            // Decode URL to handle encoded characters (spaces, special chars, Vietnamese)
+            // Use URLDecoder with UTF-8 to properly handle Vietnamese characters
+            try {
+                filePath = java.net.URLDecoder.decode(filePath, "UTF-8");
+            } catch (Exception decodeEx) {
+                logger.warn("Failed to decode URL, using original: {}", filePath);
+                // If decode fails, try to handle as-is
+            }
+            
+            logger.info("Serving file request. Original URI: {}, Decoded path: {}", requestURI, filePath);
+            
             return serveFileFromFtp(filePath);
         } catch (Exception e) {
-            logger.error("File serving error: {}", e.getMessage(), e);
+            logger.error("File serving error. URI: {}, Error: {}", request.getRequestURI(), e.getMessage(), e);
             return ResponseEntity.badRequest().build();
         }
     }
@@ -91,10 +101,23 @@ public class FilesController {
             
             logger.info("Successfully retrieved file from FTP: {}", filePath);
             
+            // Determine if file should be displayed inline (PDF, images) or downloaded (other files)
+            boolean isDisplayable = contentType.startsWith("image/") || 
+                                   contentType.equals("application/pdf") ||
+                                   contentType.equals("text/plain");
+            
+            String contentDisposition;
+            if (isDisplayable) {
+                // Display inline for PDF and images
+                contentDisposition = "inline; filename=\"" + fileName + "\"; filename*=UTF-8''" + encodedFileName;
+            } else {
+                // Download for other file types
+                contentDisposition = "attachment; filename=\"" + fileName + "\"; filename*=UTF-8''" + encodedFileName;
+            }
+            
             return ResponseEntity.ok()
                     .contentType(MediaType.parseMediaType(contentType))
-                    .header(HttpHeaders.CONTENT_DISPOSITION, 
-                        "attachment; filename=\"" + fileName + "\"; filename*=UTF-8''" + encodedFileName)
+                    .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition)
                     .body(resource);
                     
         } catch (Exception e) {
@@ -116,29 +139,56 @@ public class FilesController {
                 return null;
             }
             
-            String[] pathParts = filePath.split("/");
-            if (pathParts.length < 2) {
-                logger.error("Invalid file path: {}", filePath);
+            // Remove rootDir prefix from filePath if it exists
+            String relativePath = filePath;
+            if (filePath.startsWith(rootDir + "/")) {
+                relativePath = filePath.substring(rootDir.length() + 1);
+            } else if (filePath.startsWith(rootDir)) {
+                relativePath = filePath.substring(rootDir.length());
+            }
+            
+            String[] pathParts = relativePath.split("/");
+            if (pathParts.length < 1) {
+                logger.error("Invalid file path after removing root: {}", filePath);
                 return null;
             }
             
+            // Navigate through each directory in the path (excluding the filename)
             for (int i = 0; i < pathParts.length - 1; i++) {
-                if (!ftp.changeWorkingDirectory(pathParts[i])) {
-                    logger.warn("Subdir not found under {}: {}", rootDir, pathParts[i]);
-                    return null; 
+                String dirName = pathParts[i];
+                if (dirName == null || dirName.trim().isEmpty()) {
+                    continue; // Skip empty path parts
+                }
+                
+                // Set UTF-8 encoding for directory names with Vietnamese characters
+                try {
+                    if (!ftp.changeWorkingDirectory(dirName)) {
+                        logger.warn("Subdir not found under {}: {} (trying to access path: {})", rootDir, dirName, relativePath);
+                        return null; 
+                    }
+                } catch (Exception dirEx) {
+                    logger.warn("Error changing to subdir {}: {}", dirName, dirEx.getMessage());
+                    return null;
                 }
             }
             
             String fileName = pathParts[pathParts.length - 1];
+            if (fileName == null || fileName.trim().isEmpty()) {
+                logger.error("Empty filename in path: {}", filePath);
+                return null;
+            }
+            
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             boolean success = ftp.retrieveFile(fileName, outputStream);
             if (!success) {
-                logger.warn("File not found under {}: {}", rootDir, fileName);
+                logger.warn("File not found. Root: {}, FileName: {}, Relative path: {}", rootDir, fileName, relativePath);
                 return null;
             }
+            
+            logger.debug("Successfully retrieved file from {}: {}", rootDir, relativePath);
             return new ByteArrayResource(outputStream.toByteArray());
         } catch (Exception e) {
-            logger.warn("Error fetching from root {}: {}", rootDir, e.getMessage());
+            logger.warn("Error fetching from root {} with path {}: {}", rootDir, filePath, e.getMessage(), e);
             return null;
         } finally {
             try { ftp.changeWorkingDirectory("/"); } catch (Exception ignored) {}

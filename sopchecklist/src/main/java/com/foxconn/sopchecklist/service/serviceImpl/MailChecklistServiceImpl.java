@@ -5,6 +5,7 @@ import com.foxconn.sopchecklist.entity.ChecklistDetail;
 import com.foxconn.sopchecklist.entity.Group;
 import com.foxconn.sopchecklist.entity.TypeCronMail;
 import com.foxconn.sopchecklist.entity.Users;
+import com.foxconn.sopchecklist.entity.UserStatus;
 import com.foxconn.sopchecklist.repository.CronMailAllRepository;
 import com.foxconn.sopchecklist.repository.GroupRepository;
 import com.foxconn.sopchecklist.repository.TypeCronMailRepository;
@@ -122,7 +123,7 @@ public class MailChecklistServiceImpl implements MailChecklistService {
 
     private String buildReminderSubject(ChecklistDetail d) {
         String task = d.getTaskName() != null ? d.getTaskName() : "Checklist";
-        return "Công việc cần phải hoàn thành gấp: " + task;
+        return "Công việc cần phải hoàn thành gấp / 需要紧急完成的工作: " + task;
     }
 
     private String buildReminderBody(ChecklistDetail d) {
@@ -135,14 +136,14 @@ public class MailChecklistServiceImpl implements MailChecklistService {
 
         StringBuilder body = new StringBuilder();
         body.append("<div style=\"font-family:Arial,Helvetica,sans-serif;color:#333;line-height:1.6;\">");
-        body.append("<h2 style=\"margin:0 0 12px;color:#d4380d;\">Công việc cần hoàn thành gấp</h2>");
+        body.append("<h2 style=\"margin:0 0 12px;color:#d4380d;\">Công việc cần hoàn thành gấp / 需要紧急完成的工作</h2>");
         body.append("<table style=\"border-collapse:collapse;width:100%;\">");
-        row(body, "Tên công việc", task);
-        row(body, "Nội dung công việc", content);
-        row(body, "Người thực hiện", implementer);
-        row(body, "Ngày tạo", created);
-        row(body, "Hạn hoàn thành", deadline);
-        row(body, "Trạng thái", getStatusDisplay(d.getStatus()));
+        row(body, "Tên công việc / 工作名称", task);
+        row(body, "Nội dung công việc / 工作内容", content);
+        row(body, "Người thực hiện / 执行人", implementer);
+        row(body, "Ngày tạo / 创建日期", created);
+        row(body, "Hạn hoàn thành / 完成期限", deadline);
+        row(body, "Trạng thái / 状态", getStatusDisplay(d.getStatus()));
         body.append("</table>");
         try {
             String appBase = appPublicUrl;
@@ -151,10 +152,10 @@ public class MailChecklistServiceImpl implements MailChecklistService {
                 String link = appBase + "/checklist-detail/" + detailId;
                 body.append("<p style=\"margin-top:12px;\"><a href=\"")
                         .append(link)
-                        .append("\" style=\"display:inline-block;background:#d4380d;color:#fff;padding:8px 12px;border-radius:4px;text-decoration:none;\">Mở chi tiết checklist</a></p>");
+                        .append("\" style=\"display:inline-block;background:#d4380d;color:#fff;padding:8px 12px;border-radius:4px;text-decoration:none;\">Mở chi tiết checklist / 打开清单详情</a></p>");
             }
         } catch (Exception ignore) {}
-        body.append("<p><strong>Vui lòng hoàn thành sớm nhất có thể.</strong></p>");
+        body.append("<p><strong>Vui lòng hoàn thành sớm nhất có thể. / 请尽快完成。</strong></p>");
         body.append("</div>");
         return body.toString();
     }
@@ -173,6 +174,7 @@ public class MailChecklistServiceImpl implements MailChecklistService {
                 Group grpById = groupRepository.findById(gid).orElse(null);
                 if (grpById != null && grpById.getUsers() != null) {
                     return grpById.getUsers().stream()
+                            .filter(this::isActiveUser)
                             .map(Users::getEmail)
                             .filter(e -> e != null && !e.trim().isEmpty())
                             .distinct()
@@ -192,6 +194,7 @@ public class MailChecklistServiceImpl implements MailChecklistService {
         Group grp = groupRepository.findByNameIgnoreCase(name).orElse(null);
         if (grp != null && grp.getUsers() != null) {
             return grp.getUsers().stream()
+                    .filter(this::isActiveUser)
                     .map(Users::getEmail)
                     .filter(e -> e != null && !e.trim().isEmpty())
                     .distinct()
@@ -213,6 +216,7 @@ public class MailChecklistServiceImpl implements MailChecklistService {
         // 4) Fallback: tìm theo fullName (duyệt danh sách)
         List<Users> all = usersRepository.findAll();
         String fromName = all.stream()
+                .filter(this::isActiveUser)
                 .filter(u -> u.getFullName() != null && u.getFullName().equalsIgnoreCase(name))
                 .map(Users::getEmail)
                 .filter(e -> e != null && !e.trim().isEmpty())
@@ -223,7 +227,7 @@ public class MailChecklistServiceImpl implements MailChecklistService {
 
     private String buildSubject(ChecklistDetail d) {
         String task = d.getTaskName() != null ? d.getTaskName() : "Checklist";
-        return "Thông báo checklist mới: " + task;
+        return "Thông báo checklist mới / 通知新清单: " + task;
     }
 
     private String buildBody(ChecklistDetail d) {
@@ -236,14 +240,14 @@ public class MailChecklistServiceImpl implements MailChecklistService {
 
         StringBuilder body = new StringBuilder();
         body.append("<div style=\"font-family:Arial,Helvetica,sans-serif;color:#333;line-height:1.6;\">");
-        body.append("<h2 style=\"margin:0 0 12px;\">Công việc mới được tạo</h2>");
+        body.append("<h2 style=\"margin:0 0 12px;\">Công việc mới được tạo / 新创建的工作</h2>");
         body.append("<table style=\"border-collapse:collapse;width:100%;\">");
-        row(body, "Tên công việc", task);
-        row(body, "Nội dung công việc", content);
-        row(body, "Người thực hiện", implementer);
-        row(body, "Ngày tạo", created);
-        row(body, "Hạn hoàn thành", deadline);
-        row(body, "Trạng thái", getStatusDisplay(d.getStatus()));
+        row(body, "Tên công việc / 工作名称", task);
+        row(body, "Nội dung công việc / 工作内容", content);
+        row(body, "Người thực hiện / 执行人", implementer);
+        row(body, "Ngày tạo / 创建日期", created);
+        row(body, "Hạn hoàn thành / 完成期限", deadline);
+        row(body, "Trạng thái / 状态", getStatusDisplay(d.getStatus()));
         
         body.append("</table>");
 
@@ -256,18 +260,18 @@ public class MailChecklistServiceImpl implements MailChecklistService {
                 String link = appBase + "/checklist-detail/" + detailId;
                 body.append("<p style=\"margin-top:12px;\"><a href=\"")
                         .append(link)
-                        .append("\" style=\"display:inline-block;background:#1677ff;color:#fff;padding:8px 12px;border-radius:4px;text-decoration:none;\">Mở chi tiết checklist</a></p>");
+                        .append("\" style=\"display:inline-block;background:#1677ff;color:#fff;padding:8px 12px;border-radius:4px;text-decoration:none;\">Mở chi tiết checklist / 打开清单详情</a></p>");
             }
         } catch (Exception ignore) {}
 
-        body.append("<p><strong>Trân trọng,</strong></p>");
+        body.append("<p><strong>Trân trọng / 此致,</strong></p>");
         body.append("</div>");
         return body.toString();
     }
 
     private static void row(StringBuilder body, String name, String value) {
         body.append("<tr>");
-        body.append("<td style=\"border:1px solid #ddd;padding:8px;background:#f5f5f5;\">").append(escapeHtml(name)).append("</td>");
+        body.append("<td style=\"border:1px solid #ddd;padding:8px;background:#f5f5f5;\">").append(name).append("</td>");
         body.append("<td style=\"border:1px solid #ddd;padding:8px;\">").append(escapeHtml(value)).append("</td>");
         body.append("</tr>");
     }
@@ -316,19 +320,19 @@ public class MailChecklistServiceImpl implements MailChecklistService {
     }
     
     private String getStatusDisplay(String status) {
-        if (status == null) return "Chưa xác định";
+        if (status == null) return "Chưa xác định / 未确定";
         
         switch (status.toUpperCase()) {
             case "IN_PROGRESS":
             case "PENDING":
-                return "Đang xử lý";
+                return "Đang xử lý / 处理中";
             case "COMPLETED":
             case "DONE":
-                return "Hoàn thành";
+                return "Hoàn thành / 已完成";
             case "CANCELLED":
-                return "Đã hủy";
+                return "Đã hủy / 已取消";
             default:
-                return "Chưa xác định";
+                return "Chưa xác định / 未确定";
         }
     }
 
@@ -340,5 +344,9 @@ public class MailChecklistServiceImpl implements MailChecklistService {
                 .replace(">", "&gt;")
                 .replace("\"", "&quot;")
                 .replace("'", "&#39;");
+    }
+
+    private boolean isActiveUser(Users user) {
+        return user != null && (user.getStatus() == null || user.getStatus() == UserStatus.ACTIVE);
     }
 }

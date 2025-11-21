@@ -7,6 +7,7 @@ import com.foxconn.sopchecklist.entity.Improvements;
 import com.foxconn.sopchecklist.entity.MailRecipientAll;
 import com.foxconn.sopchecklist.entity.TypeCronMail;
 import com.foxconn.sopchecklist.entity.Users;
+import com.foxconn.sopchecklist.entity.UserStatus;
 import com.foxconn.sopchecklist.repository.CronMailAllRepository;
 import com.foxconn.sopchecklist.repository.GroupRepository;
 import com.foxconn.sopchecklist.repository.MailRecipientAllRepository;
@@ -81,11 +82,10 @@ public class MailImprovementCreationServiceImpl implements MailImprovementCreati
 
     private String buildDirectImprovementSubject(Improvements i) {
         String category = i.getCategory() != null ? i.getCategory() : "Cải thiện";
-        return "Thông báo cải thiện mới: " + category;
+        return "Thông báo cải thiện mới / 通知新改善: " + category;
     }
 
     private String buildDirectImprovementBody(Improvements i) {
-        DateTimeFormatter dateFmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
         DateTimeFormatter dateTimeFmt = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
         
         String category = safe(i.getCategory());
@@ -99,24 +99,24 @@ public class MailImprovementCreationServiceImpl implements MailImprovementCreati
 
         StringBuilder body = new StringBuilder();
         body.append("<div style=\"font-family:Arial,Helvetica,sans-serif;color:#333;line-height:1.6;\">");
-        body.append("<h2 style=\"margin:0 0 12px;color:#0d6efd;\">📋 Thông báo cải thiện mới</h2>");
+        body.append("<h2 style=\"margin:0 0 12px;color:#0d6efd;\">📋 Thông báo cải thiện mới / 通知新改善</h2>");
         body.append("<table style=\"border-collapse:collapse;width:100%;\">" );
-        row(body, "Hạng mục", category);
-        row(body, "Nội dung cải thiện", issueDescription);
-        row(body, "Người phụ trách", responsible);
+        row(body, "Hạng mục / 项目", category);
+        row(body, "Nội dung cải thiện / 改善内容", issueDescription);
+        row(body, "Người phụ trách / 负责人", responsible);
         if (!collaborators.isEmpty()) {
-            row(body, "Người phối hợp", collaborators);
+            row(body, "Người phối hợp / 协作人", collaborators);
         }
         if (!improvementEvent.isEmpty()) {
-            row(body, "Loại sự kiện", improvementEvent);
+            row(body, "Loại sự kiện / 事件类型", improvementEvent);
         }
         if (!actionPlan.isEmpty()) {
-            row(body, "Hành động cải thiện", actionPlan);
+            row(body, "Hành động cải thiện / 改善行动", actionPlan);
         }
         if (!plannedDue.isEmpty()) {
-            row(body, "Thời gian dự kiến hoàn thành", plannedDue);
+            row(body, "Thời gian dự kiến hoàn thành / 预计完成时间", plannedDue);
         }
-        row(body, "Thời gian tạo", created);
+        row(body, "Thời gian tạo / 创建时间", created);
         body.append("</table>");
 
         try {
@@ -125,12 +125,12 @@ public class MailImprovementCreationServiceImpl implements MailImprovementCreati
                 String link = appPublicUrl + "/improvement?improvementId=" + improvementId;
                 body.append("<p style=\"margin-top:12px;\"><a href=\"");
                 body.append(link);
-                body.append("\" style=\"display:inline-block;background:#0d6efd;color:#fff;padding:8px 12px;border-radius:4px;text-decoration:none;\">Xem chi tiết cải thiện</a></p>");
+                body.append("\" style=\"display:inline-block;background:#0d6efd;color:#fff;padding:8px 12px;border-radius:4px;text-decoration:none;\">Xem chi tiết cải thiện / 查看改善详情</a></p>");
             }
         } catch (Exception ignore) {}
 
-        body.append("<p><strong>Trân trọng,</strong></p>");
-        body.append("<p><em>Hệ thống IT Management</em></p>");
+        body.append("<p><strong>Trân trọng / 此致,</strong></p>");
+        body.append("<p><em>Hệ thống IT Management / IT管理系统</em></p>");
         body.append("</div>");
         return body.toString();
     }
@@ -191,6 +191,7 @@ public class MailImprovementCreationServiceImpl implements MailImprovementCreati
                 Group grp = groupRepository.findById(gid).orElse(null);
                 if (grp != null && grp.getUsers() != null) {
                     return grp.getUsers().stream()
+                            .filter(this::isActiveUser)
                             .map(Users::getEmail)
                             .filter(e -> e != null && !e.trim().isEmpty())
                             .distinct()
@@ -206,6 +207,7 @@ public class MailImprovementCreationServiceImpl implements MailImprovementCreati
         Group grpByName = groupRepository.findByNameIgnoreCase(name).orElse(null);
         if (grpByName != null && grpByName.getUsers() != null) {
             return grpByName.getUsers().stream()
+                    .filter(this::isActiveUser)
                     .map(Users::getEmail)
                     .filter(e -> e != null && !e.trim().isEmpty())
                     .distinct()
@@ -223,6 +225,7 @@ public class MailImprovementCreationServiceImpl implements MailImprovementCreati
 
         List<Users> all = usersRepository.findAll();
         String fromName = all.stream()
+                .filter(this::isActiveUser)
                 .filter(u -> u.getFullName() != null && u.getFullName().equalsIgnoreCase(name))
                 .map(Users::getEmail)
                 .filter(e -> e != null && !e.trim().isEmpty())
@@ -233,7 +236,7 @@ public class MailImprovementCreationServiceImpl implements MailImprovementCreati
 
     private String buildSubject(ChecklistDetail d) {
         String task = d.getTaskName() != null ? d.getTaskName() : "Checklist";
-        return "Thông báo phát sinh cải thiện: " + task;
+        return "Thông báo phát sinh cải thiện / 通知产生改善: " + task;
     }
 
     private String buildBody(ChecklistDetail d, Improvements i) {
@@ -246,13 +249,13 @@ public class MailImprovementCreationServiceImpl implements MailImprovementCreati
 
         StringBuilder body = new StringBuilder();
         body.append("<div style=\"font-family:Arial,Helvetica,sans-serif;color:#333;line-height:1.6;\">");
-        body.append("<h2 style=\"margin:0 0 12px;color:#d9534f;\">⚠️ Phát sinh cải thiện từ Checklist</h2>");
+        body.append("<h2 style=\"margin:0 0 12px;color:#d9534f;\">⚠️ Phát sinh cải thiện từ Checklist / 从清单产生改善</h2>");
         body.append("<table style=\"border-collapse:collapse;width:100%;\">");
-        row(body, "Tên công việc", task);
-        row(body, "Nội dung công việc", content);
-        row(body, "Người phụ trách", implementer);
-        row(body, "Thời gian ghi nhận", created);
-        row(body, "Thông tin bất thường", abnormalInfo);
+        row(body, "Tên công việc / 工作名称", task);
+        row(body, "Nội dung công việc / 工作内容", content);
+        row(body, "Người phụ trách / 负责人", implementer);
+        row(body, "Thời gian ghi nhận / 记录时间", created);
+        row(body, "Thông tin bất thường / 异常信息", abnormalInfo);
         body.append("</table>");
 
         try {
@@ -261,12 +264,12 @@ public class MailImprovementCreationServiceImpl implements MailImprovementCreati
                 String link = appPublicUrl + "/improvement?detailId=" + detailId;
                 body.append("<p style=\"margin-top:12px;\"><a href=\"")
                         .append(link)
-                        .append("\" style=\"display:inline-block;background:#0d6efd;color:#fff;padding:8px 12px;border-radius:4px;text-decoration:none;\">Xem cải thiện</a></p>");
+                        .append("\" style=\"display:inline-block;background:#0d6efd;color:#fff;padding:8px 12px;border-radius:4px;text-decoration:none;\">Xem cải thiện / 查看改善</a></p>");
             }
         } catch (Exception ignore) {}
 
-        body.append("<p><strong>Trân trọng,</strong></p>");
-        body.append("<p><em>Hệ thống IT Management</em></p>");
+        body.append("<p><strong>Trân trọng / 此致,</strong></p>");
+        body.append("<p><em>Hệ thống IT Management / IT管理系统</em></p>");
         body.append("</div>");
         return body.toString();
     }
@@ -384,7 +387,7 @@ public class MailImprovementCreationServiceImpl implements MailImprovementCreati
 
     private static void row(StringBuilder body, String name, String value) {
         body.append("<tr>");
-        body.append("<td style=\"border:1px solid #ddd;padding:8px;background:#f5f5f5;\">").append(escapeHtml(name)).append("</td>");
+        body.append("<td style=\"border:1px solid #ddd;padding:8px;background:#f5f5f5;\">").append(name).append("</td>");
         body.append("<td style=\"border:1px solid #ddd;padding:8px;\">").append(escapeHtml(value)).append("</td>");
         body.append("</tr>");
     }
@@ -397,6 +400,10 @@ public class MailImprovementCreationServiceImpl implements MailImprovementCreati
                 .replace(">", "&gt;")
                 .replace("\"", "&quot;")
                 .replace("'", "&#39;");
+    }
+
+    private boolean isActiveUser(Users user) {
+        return user != null && (user.getStatus() == null || user.getStatus() == UserStatus.ACTIVE);
     }
 }
 

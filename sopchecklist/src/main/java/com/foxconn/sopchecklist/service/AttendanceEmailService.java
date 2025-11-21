@@ -7,6 +7,7 @@ import com.foxconn.sopchecklist.entity.Users;
 import com.foxconn.sopchecklist.repository.AttendanceReportRepository;
 import com.foxconn.sopchecklist.repository.GroupRepository;
 import com.foxconn.sopchecklist.repository.UserAttendanceRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -24,6 +25,9 @@ public class AttendanceEmailService {
     private final UserAttendanceRepository userAttendanceRepository;
     private final GroupRepository groupRepository;
 
+    @Value("${app.public.url:http://10.228.64.77:3000}")
+    private String appPublicUrl;
+
     public AttendanceEmailService(AttendanceReportRepository attendanceReportRepository,
                                   UserAttendanceRepository userAttendanceRepository,
                                   GroupRepository groupRepository) {
@@ -32,25 +36,21 @@ public class AttendanceEmailService {
         this.groupRepository = groupRepository;
     }
 
-    /**
-     * Tính attendance rate tổng thể và theo nhóm cho một ngày
-     */
+    
     public AttendanceStats calculateAttendanceStats(LocalDate date) {
-        // Lấy tất cả attendance reports cho ngày này
         List<AttendanceReport> reports = attendanceReportRepository.findByAttendanceDate(date);
         
-        // Lấy tất cả user đang được theo dõi (active)
         List<UserAttendance> activeUsers = userAttendanceRepository.findByIsActiveTrue();
         Set<Integer> activeUserIds = activeUsers.stream()
             .map(ua -> ua.getUser().getUserID())
             .collect(Collectors.toSet());
 
-        // Tính tổng thể
         int totalEmployees = activeUserIds.size();
         int present = 0;
         int halfDay = 0;
         int absent = 0;
         int leave = 0;
+        int weekendLeave = 0;
 
         Map<Integer, AttendanceReport> reportMap = reports.stream()
             .collect(Collectors.toMap(
@@ -70,27 +70,24 @@ public class AttendanceEmailService {
                         halfDay++;
                     } else if (status.contains("Vắng") || status.contains("Vắng mặt") || status.contains("缺勤")) {
                         absent++;
-                    } else if (status.contains("Nghỉ phép") || status.contains("请假") || 
-                               status.contains("Nghỉ CN") || status.contains("周日休")) {
+                    } else if (status.contains("Nghỉ CN") || status.contains("周日休")) {
+                        weekendLeave++;
+                    } else if (status.contains("Nghỉ phép") || status.contains("请假")) {
                         leave++;
                     }
                 }
             } else {
-                // Không có bản ghi = vắng mặt
                 absent++;
             }
         }
 
-        // Tính tỉ lệ tổng thể (effective present = present + halfDay * 0.5)
         double effectivePresent = present + halfDay * 0.5;
         int overallRate = totalEmployees > 0 ? (int) Math.round((effectivePresent / totalEmployees) * 100) : 0;
 
-        // Tính theo nhóm - hiển thị TẤT CẢ các nhóm, kể cả nhóm không có nhân viên
         List<GroupStats> groupStatsList = new ArrayList<>();
         List<Group> allGroups = groupRepository.findAll();
 
         for (Group group : allGroups) {
-            // Lấy user IDs trong nhóm này và đang được theo dõi
             Set<Integer> groupUserIds = new java.util.HashSet<>();
             if (group.getUsers() != null && !group.getUsers().isEmpty()) {
                 groupUserIds = group.getUsers().stream()
@@ -99,11 +96,12 @@ public class AttendanceEmailService {
                     .collect(Collectors.toSet());
             }
 
-            // Hiển thị tất cả nhóm, kể cả nhóm không có nhân viên (sẽ hiển thị 0%)
 
             int groupPresent = 0;
             int groupHalfDay = 0;
             int groupAbsent = 0;
+            int groupLeave = 0;
+            int groupWeekendLeave = 0;
 
             for (Integer userId : groupUserIds) {
                 AttendanceReport report = reportMap.get(userId);
@@ -116,8 +114,11 @@ public class AttendanceEmailService {
                             groupHalfDay++;
                         } else if (status.contains("Vắng") || status.contains("Vắng mặt") || status.contains("缺勤")) {
                             groupAbsent++;
+                        } else if (status.contains("Nghỉ CN") || status.contains("周日休")) {
+                            groupWeekendLeave++;
+                        } else if (status.contains("Nghỉ phép") || status.contains("请假")) {
+                            groupLeave++;
                         }
-                        // Note: Leave status is counted as absent for rate calculation
                     }
                 } else {
                     groupAbsent++;
@@ -135,6 +136,8 @@ public class AttendanceEmailService {
                 groupPresent,
                 groupHalfDay,
                 groupAbsent,
+                groupLeave,
+                groupWeekendLeave,
                 groupRate
             ));
         }
@@ -145,6 +148,7 @@ public class AttendanceEmailService {
             halfDay,
             absent,
             leave,
+            weekendLeave,
             overallRate,
             groupStatsList
         );
@@ -158,73 +162,68 @@ public class AttendanceEmailService {
         String dateStr = date.format(formatter);
 
         StringBuilder html = new StringBuilder();
-        html.append("<!DOCTYPE html>");
-        html.append("<html>");
-        html.append("<head>");
-        html.append("<meta charset='UTF-8'>");
-        html.append("<style>");
-        html.append("body { font-family: Arial, sans-serif; margin: 20px; background-color: #f5f5f5; }");
-        html.append(".container { max-width: 800px; margin: 0 auto; background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }");
-        html.append("h2 { color: #1890ff; margin-bottom: 20px; }");
-        html.append(".overall-section { margin-bottom: 30px; padding: 20px; background-color: #f9f9f9; border-radius: 8px; }");
-        html.append(".overall-title { font-size: 18px; font-weight: bold; margin-bottom: 15px; color: #333; text-align: center; }");
-        html.append(".overall-value { font-size: 48px; font-weight: bold; text-align: center; margin: 10px 0 15px; }");
-        html.append(".overall-summary { text-align: center; color: #666; font-size: 16px; }");
-        html.append(".group-section { margin-top: 30px; }");
-        html.append(".group-item { margin-bottom: 20px; padding: 15px; background-color: #fff; border: 1px solid #e8e8e8; border-radius: 6px; }");
-        html.append(".group-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }");
-        html.append(".group-name { font-weight: 500; color: #333; }");
-        html.append(".group-rate { font-weight: 500; font-size: 16px; }");
-        html.append(".progress-bar-container { width: 100%; height: 20px; background-color: #f0f0f0; border-radius: 10px; overflow: hidden; margin: 10px 0; }");
-        html.append(".progress-bar { height: 100%; background-color: #52c41a; transition: width 0.3s; }");
-        html.append(".progress-bar.medium { background-color: #ff7a45; }");
-        html.append(".progress-bar.low { background-color: #ff4d4f; }");
-        html.append(".group-details { color: #666; font-size: 14px; }");
-        html.append("</style>");
-        html.append("</head>");
-        html.append("<body>");
-        html.append("<div class='container'>");
-        html.append("<h2>Thông báo nhân viên IT đi làm ngày ").append(dateStr).append("</h2>");
+        html.append("<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><style>");
+        html.append("body{font-family:Arial;margin:20px;background:#f5f5f5}");
+        html.append(".c{max-width:800px;margin:auto;background:#fff;padding:20px;border-radius:8px;box-shadow:0 2px 4px #0001}");
+        html.append("h2{color:#1890ff;margin-bottom:15px}");
+        html.append(".o{margin-bottom:20px;padding:15px;background:#f9f9f9;border-radius:8px;text-align:center}");
+        html.append(".ov{font-size:40px;font-weight:700;color:#52c41a;margin:10px 0}");
+        html.append(".g{margin-bottom:15px;padding:12px;border:1px solid #e8e8e8;border-radius:6px;font-size:14px}");
+        html.append(".h{display:flex;justify-content:space-between;margin-bottom:6px;font-weight:500}");
+        html.append(".b{height:16px;background:#f0f0f0;border-radius:8px;overflow:hidden;margin:6px 0}");
+        html.append(".bar{height:100%;background:#52c41a}");
+        html.append(".m{background:#ff7a45!important}");
+        html.append(".l{background:#ff4d4f!important}");
+        html.append(".present{color:#52c41a!important}"); 
+        html.append(".leave{color:#ff7a45!important}"); 
+        html.append(".weekend{color:#3b82f6!important}");
+        html.append(".absent{color:#ff4d4f!important}");
+        html.append("</style></head><body><div class=\"c\">");
+        html.append("<h2>Thông báo nhân viên IT đi làm / IT员工出勤通知: ").append(dateStr).append("</h2>");
         
-        // Tỉ lệ tổng thể - dùng table-based layout với inline styles để tương thích với email client
+        // Tỉ lệ tổng thể
         String overallColor = stats.overallRate >= 80 ? "#52c41a" : stats.overallRate >= 50 ? "#ff7a45" : "#ff4d4f";
-        html.append("<div class='overall-section'>");
-        html.append("<div class='overall-title'>Tỉ lệ đi làm tổng thể</div>");
-        html.append("<div class='overall-value' style='color: ").append(overallColor).append(";'>")
-            .append(stats.overallRate).append("%</div>");
-        html.append("<div class='overall-summary'>");
-        html.append(stats.present).append(" có mặt, ")
-             .append(stats.halfDay).append(" nửa ngày, ")
-             .append(stats.absent).append(" vắng");
-        html.append("</div>");
-        html.append("</div>");
+        html.append("<div class=\"o\"><div>Tỉ lệ đi làm tổng thể / 总体出勤率</div>");
+        html.append("<div class=\"ov\" style=\"color:").append(overallColor).append("\">").append(stats.overallRate).append("%</div>");
+        html.append("<div><span class=\"present\">").append(stats.present).append(" có mặt / 出勤</span>, ")
+             .append(stats.halfDay).append(" nửa ngày / 半天, ")
+             .append("<span class=\"leave\">").append(stats.leave).append(" nghỉ phép / 请假</span>, ")
+             .append("<span class=\"weekend\">").append(stats.weekendLeave).append(" nghỉ CN / 周日休</span>, ")
+             .append("<span class=\"absent\">").append(stats.absent).append(" vắng / 缺勤</span></div></div>");
 
         // Tỉ lệ theo nhóm
-        html.append("<div class='group-section'>");
         for (GroupStats group : stats.groupStats) {
-            String barClass = group.rate >= 80 ? "" : group.rate >= 50 ? "medium" : "low";
+            String barClass = group.rate >= 80 ? "" : group.rate >= 50 ? " m" : " l";
             String rateColor = group.rate >= 80 ? "#52c41a" : group.rate >= 50 ? "#ff7a45" : "#ff4d4f";
             
-            html.append("<div class='group-item'>");
-            html.append("<div class='group-header'>");
-            html.append("<div class='group-name'>Nhóm ").append(group.name).append(" (").append(group.totalEmployees).append(" người)</div>");
-            html.append("<div class='group-rate' style='color: ").append(rateColor).append(";'>").append(group.rate).append("%</div>");
-            html.append("</div>");
-            html.append("<div class='progress-bar-container'>");
-            html.append("<div class='progress-bar ").append(barClass).append("' style='width: ").append(group.rate).append("%;'></div>");
-            html.append("</div>");
-            html.append("<div class='group-details'>");
-            html.append(group.present).append(" có mặt, ")
-                 .append(group.halfDay).append(" nửa ngày, ")
-                 .append(group.absent).append(" vắng");
-            html.append("</div>");
+            html.append("<div class=\"g\">");
+            html.append("<div class=\"h\"><span>Nhóm / 组: ").append(group.name).append(" (").append(group.totalEmployees).append(" người / 人)</span>");
+            html.append("<span style=\"color:").append(rateColor).append("\">").append(group.rate).append("%</span></div>");
+            html.append("<div class=\"b\"><div class=\"bar").append(barClass).append("\" style=\"width:").append(group.rate).append("%\"></div></div>");
+            html.append("<span class=\"present\">").append(group.present).append(" có mặt / 出勤</span>, ")
+                 .append(group.halfDay).append(" nửa ngày / 半天, ")
+                 .append("<span class=\"leave\">").append(group.leave).append(" nghỉ phép / 请假</span>, ")
+                 .append("<span class=\"weekend\">").append(group.weekendLeave).append(" nghỉ CN / 周日休</span>, ")
+                 .append("<span class=\"absent\">").append(group.absent).append(" vắng / 缺勤</span>");
             html.append("</div>");
         }
-        html.append("</div>");
 
-        html.append("</div>");
-        html.append("</body>");
-        html.append("</html>");
+        
+        try {
+        
+            DateTimeFormatter urlFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+            String dateUrl = date.format(urlFormatter);
+            String link = appPublicUrl + "/attendance?date=" + dateUrl;
+            html.append("<p style=\"margin-top:20px;text-align:center;\"><a href=\"")
+                .append(link)
+                .append("\" style=\"display:inline-block;background:#1890ff;color:#fff;padding:8px 12px;border-radius:4px;text-decoration:none;\">Xem chi tiết / 查看详情</a></p>");
+        } catch (Exception ignore) {}
+
+        // Chữ ký
+        html.append("<p style=\"margin-top:20px;\"><strong>Trân trọng / 此致,</strong></p>");
+        html.append("<p><em>Hệ thống IT Management / IT管理系统</em></p>");
+
+        html.append("</div></body></html>");
 
         return html.toString();
     }
@@ -249,16 +248,18 @@ public class AttendanceEmailService {
         public final int halfDay;
         public final int absent;
         public final int leave;
+        public final int weekendLeave;
         public final int overallRate;
         public final List<GroupStats> groupStats;
 
-        public AttendanceStats(int totalEmployees, int present, int halfDay, int absent, int leave,
+        public AttendanceStats(int totalEmployees, int present, int halfDay, int absent, int leave, int weekendLeave,
                               int overallRate, List<GroupStats> groupStats) {
             this.totalEmployees = totalEmployees;
             this.present = present;
             this.halfDay = halfDay;
             this.absent = absent;
             this.leave = leave;
+            this.weekendLeave = weekendLeave;
             this.overallRate = overallRate;
             this.groupStats = groupStats;
         }
@@ -270,14 +271,18 @@ public class AttendanceEmailService {
         public final int present;
         public final int halfDay;
         public final int absent;
+        public final int leave;
+        public final int weekendLeave;
         public final int rate;
 
-        public GroupStats(String name, int totalEmployees, int present, int halfDay, int absent, int rate) {
+        public GroupStats(String name, int totalEmployees, int present, int halfDay, int absent, int leave, int weekendLeave, int rate) {
             this.name = name;
             this.totalEmployees = totalEmployees;
             this.present = present;
             this.halfDay = halfDay;
             this.absent = absent;
+            this.leave = leave;
+            this.weekendLeave = weekendLeave;
             this.rate = rate;
         }
     }

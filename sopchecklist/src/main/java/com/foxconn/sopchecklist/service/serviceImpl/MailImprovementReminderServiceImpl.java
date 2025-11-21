@@ -5,6 +5,7 @@ import com.foxconn.sopchecklist.entity.Group;
 import com.foxconn.sopchecklist.entity.Improvements;
 import com.foxconn.sopchecklist.entity.TypeCronMail;
 import com.foxconn.sopchecklist.entity.Users;
+import com.foxconn.sopchecklist.entity.UserStatus;
 import com.foxconn.sopchecklist.repository.CronMailAllRepository;
 import com.foxconn.sopchecklist.repository.GroupRepository;
 import com.foxconn.sopchecklist.repository.TypeCronMailRepository;
@@ -55,7 +56,7 @@ public class MailImprovementReminderServiceImpl implements MailImprovementRemind
 
     private String buildSubject(Improvements i) {
         String category = i.getCategory() != null ? i.getCategory() : "Cải thiện";
-        return "Gấp bạn cần hoàn thành cải thiện: " + category;
+        return "Gấp bạn cần hoàn thành cải thiện / 紧急需要完成改善: " + category;
     }
 
     private String buildBody(Improvements i) {
@@ -71,27 +72,27 @@ public class MailImprovementReminderServiceImpl implements MailImprovementRemind
 
         StringBuilder body = new StringBuilder();
         body.append("<div style=\"font-family:Arial,Helvetica,sans-serif;color:#333;line-height:1.6;\">");
-        body.append("<h2 style=\"margin:0 0 12px;color:#d9534f;\">⚠️ Nhắc nhở hoàn thành cải thiện</h2>");
-        body.append("<p style=\"color:#d9534f;font-weight:bold;margin-bottom:12px;\">Cải thiện này đã đến thời gian dự kiến hoàn thành nhưng chưa được hoàn thành.</p>");
+        body.append("<h2 style=\"margin:0 0 12px;color:#d9534f;\">⚠️ Nhắc nhở hoàn thành cải thiện / 提醒完成改善</h2>");
+        body.append("<p style=\"color:#d9534f;font-weight:bold;margin-bottom:12px;\">Cải thiện này đã đến thời gian dự kiến hoàn thành nhưng chưa được hoàn thành. / 此改善已到预计完成时间但尚未完成。</p>");
         body.append("<table style=\"border-collapse:collapse;width:100%;\">");
-        row(body, "Hạng mục", category);
+        row(body, "Hạng mục / 项目", category);
         if (issueDescription != null && !issueDescription.trim().isEmpty()) {
-            row(body, "Nội dung cải thiện", issueDescription);
+            row(body, "Nội dung cải thiện / 改善内容", issueDescription);
         }
         if (responsible != null && !responsible.trim().isEmpty() && !responsible.equals("-")) {
-            row(body, "Người phụ trách", responsible);
+            row(body, "Người phụ trách / 负责人", responsible);
         }
         if (collaborators != null && !collaborators.trim().isEmpty() && !collaborators.equals("-")) {
-            row(body, "Người phối hợp", collaborators);
+            row(body, "Người phối hợp / 协作人", collaborators);
         }
         if (plannedDueAt != null && !plannedDueAt.trim().isEmpty()) {
-            row(body, "Dự kiến hoàn thành", plannedDueAt);
+            row(body, "Dự kiến hoàn thành / 预计完成时间", plannedDueAt);
         }
         if (status != null && !status.trim().isEmpty()) {
-            row(body, "Trạng thái", status);
+            row(body, "Trạng thái / 状态", status);
         }
         if (progress != null && !progress.trim().isEmpty()) {
-            row(body, "Tiến độ", progress);
+            row(body, "Tiến độ / 进度", progress);
         }
         body.append("</table>");
 
@@ -101,12 +102,12 @@ public class MailImprovementReminderServiceImpl implements MailImprovementRemind
                 String link = appPublicUrl + "/improvement?improvementId=" + improvementId;
                 body.append("<p style=\"margin-top:12px;\"><a href=\"")
                         .append(link)
-                        .append("\" style=\"display:inline-block;background:#d9534f;color:#fff;padding:8px 12px;border-radius:4px;text-decoration:none;\">Xem cải thiện</a></p>");
+                        .append("\" style=\"display:inline-block;background:#d9534f;color:#fff;padding:8px 12px;border-radius:4px;text-decoration:none;\">Xem cải thiện / 查看改善</a></p>");
             }
         } catch (Exception ignore) {}
 
-        body.append("<p><strong>Trân trọng,</strong></p>");
-        body.append("<p><em>Hệ thống IT Management</em></p>");
+        body.append("<p><strong>Trân trọng / 此致,</strong></p>");
+        body.append("<p><em>Hệ thống IT Management / IT管理系统</em></p>");
         body.append("</div>");
         return body.toString();
     }
@@ -189,6 +190,7 @@ public class MailImprovementReminderServiceImpl implements MailImprovementRemind
                 Group grp = groupRepository.findById(gid).orElse(null);
                 if (grp != null && grp.getUsers() != null) {
                     return grp.getUsers().stream()
+                            .filter(this::isActiveUser)
                             .map(Users::getEmail)
                             .filter(e -> e != null && !e.trim().isEmpty())
                             .distinct()
@@ -204,6 +206,7 @@ public class MailImprovementReminderServiceImpl implements MailImprovementRemind
         Group grpByName = groupRepository.findByNameIgnoreCase(name).orElse(null);
         if (grpByName != null && grpByName.getUsers() != null) {
             return grpByName.getUsers().stream()
+                    .filter(this::isActiveUser)
                     .map(Users::getEmail)
                     .filter(e -> e != null && !e.trim().isEmpty())
                     .distinct()
@@ -221,6 +224,7 @@ public class MailImprovementReminderServiceImpl implements MailImprovementRemind
 
         List<Users> all = usersRepository.findAll();
         String fromName = all.stream()
+                .filter(this::isActiveUser)
                 .filter(u -> u.getFullName() != null && u.getFullName().equalsIgnoreCase(name))
                 .map(Users::getEmail)
                 .filter(e -> e != null && !e.trim().isEmpty())
@@ -233,11 +237,11 @@ public class MailImprovementReminderServiceImpl implements MailImprovementRemind
         if (status == null || status.trim().isEmpty()) return "";
         String statusUpper = status.toUpperCase();
         if (statusUpper.equals("DONE") || statusUpper.equals("COMPLETED") || statusUpper.contains("HOÀN")) {
-            return "Hoàn thành";
+            return "Hoàn thành / 已完成";
         } else if (statusUpper.equals("IN_PROGRESS") || statusUpper.contains("ĐANG")) {
-            return "Đang thực hiện";
+            return "Đang thực hiện / 进行中";
         } else if (statusUpper.equals("PENDING") || statusUpper.contains("CHƯA")) {
-            return "Chưa thực hiện";
+            return "Chưa thực hiện / 未实施";
         }
         return status;
     }
@@ -272,7 +276,7 @@ public class MailImprovementReminderServiceImpl implements MailImprovementRemind
 
     private static void row(StringBuilder body, String name, String value) {
         body.append("<tr>");
-        body.append("<td style=\"border:1px solid #ddd;padding:8px;background:#f5f5f5;\">").append(escapeHtml(name)).append("</td>");
+        body.append("<td style=\"border:1px solid #ddd;padding:8px;background:#f5f5f5;\">").append(name).append("</td>");
         body.append("<td style=\"border:1px solid #ddd;padding:8px;\">").append(escapeHtml(value)).append("</td>");
         body.append("</tr>");
     }
@@ -285,6 +289,10 @@ public class MailImprovementReminderServiceImpl implements MailImprovementRemind
                 .replace(">", "&gt;")
                 .replace("\"", "&quot;")
                 .replace("'", "&#39;");
+    }
+
+    private boolean isActiveUser(Users user) {
+        return user != null && (user.getStatus() == null || user.getStatus() == UserStatus.ACTIVE);
     }
 }
 

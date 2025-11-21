@@ -107,22 +107,22 @@ public class SOPDocumentsServiceImpl implements SOPDocumentsService {
 
             try {
                 String sopName = savedDocument.getSop() != null ? savedDocument.getSop().getName() : "";
-                String subject = "Thông báo thay đổi: " + sopName;
+                String subject = "Thông báo thay đổi / 通知变更: " + sopName;
 
                 StringBuilder body = new StringBuilder();
                 body.append("<div style=\"font-family:Arial,Helvetica,sans-serif;color:#333;line-height:1.6;\">");
-                body.append("<h2 style=\"margin:0 0 12px;\">Thông tin SOPs: ")
+                body.append("<h2 style=\"margin:0 0 12px;\">Thông tin SOPs / SOP信息: ")
                     .append(escapeHtml(sopName))
                     .append("</h2>");
                 body.append("<table style=\"border-collapse:collapse;width:100%;\">");
 
                 body.append("<tr>");
-                body.append("<td style=\"border:1px solid #ddd;padding:8px;\">Tên tài liệu</td>");
+                body.append("<td style=\"border:1px solid #ddd;padding:8px;\">Tên tài liệu / 文档名称</td>");
                 body.append("<td style=\"border:1px solid #ddd;padding:8px;\">").append(escapeHtml(nullToEmpty(savedDocument.getTitle()))).append("</td>");
                 body.append("</tr>");
 
                 body.append("<tr>");
-                body.append("<td style=\"border:1px solid #ddd;padding:8px;\">Mô tả</td>");
+                body.append("<td style=\"border:1px solid #ddd;padding:8px;\">Mô tả / 描述</td>");
                 body.append("<td style=\"border:1px solid #ddd;padding:8px;\">").append(escapeHtml(nullToEmpty(savedDocument.getDescription()))).append("</td>");
                 body.append("</tr>");
 
@@ -132,18 +132,18 @@ public class SOPDocumentsServiceImpl implements SOPDocumentsService {
                         ? savedDocument.getCreatedBy().getFullName() : "";
 
                 body.append("<tr>");
-                body.append("<td style=\"border:1px solid #ddd;padding:8px;\">Ngày tạo</td>");
+                body.append("<td style=\"border:1px solid #ddd;padding:8px;\">Ngày tạo / 创建日期</td>");
                 body.append("<td style=\"border:1px solid #ddd;padding:8px;\">").append(escapeHtml(createdAtStr)).append("</td>");
                 body.append("</tr>");
 
                 body.append("<tr>");
-                body.append("<td style=\"border:1px solid #ddd;padding:8px;\">Người tạo</td>");
+                body.append("<td style=\"border:1px solid #ddd;padding:8px;\">Người tạo / 创建人</td>");
                 body.append("<td style=\"border:1px solid #ddd;padding:8px;\">").append(escapeHtml(createdByStr)).append("</td>");
                 body.append("</tr>");
 
                 if (filesToSave != null && !filesToSave.isEmpty()) {
                     body.append("<tr>");
-                    body.append("<td style=\"border:1px solid #ddd;padding:8px;\">Tệp đính kèm</td>");
+                    body.append("<td style=\"border:1px solid #ddd;padding:8px;\">Tệp đính kèm / 附件</td>");
                     body.append("<td style=\"border:1px solid #ddd;padding:8px;\">");
                     body.append("<ul style=\"margin:0;padding-left:18px;\">");
                     for (SOPDocumentFiles f : filesToSave) {
@@ -165,11 +165,11 @@ public class SOPDocumentsServiceImpl implements SOPDocumentsService {
                         String appBase = appPublicUrl;
                         String link = appBase + "/sops/" + sopIdMail + "?doc=" + docId;
                         body.append("<p style=\"margin-top:12px;\"><a href=\"").append(link)
-                            .append("\" style=\"display:inline-block;background:#1677ff;color:#fff;padding:8px 12px;border-radius:4px;text-decoration:none;\">Mở tài liệu vừa tạo</a></p>");
+                            .append("\" style=\"display:inline-block;background:#1677ff;color:#fff;padding:8px 12px;border-radius:4px;text-decoration:none;\">Mở tài liệu vừa tạo / 打开刚创建的文档</a></p>");
                     }
                 } catch (Exception ignore) {}
 
-                body.append("<p><strong>Trân trọng,</strong></p>");
+                body.append("<p><strong>Trân trọng / 此致,</strong></p>");
                 body.append("</div>");
 
                 cronMailAllSendService.sendSOPSMail(subject, body.toString(), null);

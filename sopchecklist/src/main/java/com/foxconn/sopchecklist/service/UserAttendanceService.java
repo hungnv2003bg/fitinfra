@@ -31,7 +31,7 @@ public class UserAttendanceService {
     }
 
     public List<UserAttendance> findAll() {
-        return repository.findAll();
+        return repository.findAllOrderedByIsActiveAndCreatedAt();
     }
 
     public List<UserAttendance> findActiveUsers() {

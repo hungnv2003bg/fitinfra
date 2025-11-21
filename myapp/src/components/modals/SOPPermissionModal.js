@@ -77,6 +77,9 @@ export default function SOPPermissionModal({ open, record, onCancel, onSaved, gl
         ]);
         const groupList = groupRes.data || [];
         const userList = (userRes.data || []).filter(u => {
+          // Chỉ hiển thị user có trạng thái hoạt động
+          if (u.status !== "ACTIVE") return false;
+          // Loại bỏ ADMIN
           if (!u.roles || !Array.isArray(u.roles)) return true;
           return !u.roles.some(r => r.name && r.name.toUpperCase() === 'ADMIN');
         });

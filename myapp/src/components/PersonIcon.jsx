@@ -47,8 +47,9 @@ const PersonIcon = ({ status, size = 'md' }) => {
       case 'late':
         return { head: '#22c55e', body: '#22c55e' }; // Green
       case 'absent':
-      case 'leave':
         return { head: '#ef4444', body: '#ef4444' }; // Red
+      case 'leave':
+        return { head: '#ff7a45', body: '#ff7a45' }; // Orange
       case 'weekend':
         return { head: '#3b82f6', body: '#3b82f6' }; // Blue
       case 'halfday':

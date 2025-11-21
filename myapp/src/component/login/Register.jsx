@@ -110,7 +110,7 @@ function Register({ onSuccess }) {
                 password: values.password,
                 manv: values.manv,
                 phone: values.phone,
-                groupIds: values.groups || []
+                groupIds: values.group ? [values.group] : []
             });
 
             if (response && response.data) {
@@ -209,9 +209,8 @@ function Register({ onSuccess }) {
                     />
                 </Form.Item>
 
-                <Form.Item name="groups" label={t.group}>
+                <Form.Item name="group" label={t.group}>
                     <Select
-                        mode="multiple"
                         placeholder={t.groupPlaceholder}
                         allowClear
                         size="large"

@@ -28,16 +28,16 @@ public class CronMailAll {
     @JoinColumn(name = "type_id", insertable = false, updatable = false)
     private TypeCronMail typeCronMail;
 
-    @Column(name = "mailto", columnDefinition = "NVARCHAR(1000)")
+    @Column(name = "mailto", columnDefinition = "NVARCHAR(2000)")
     private String mailTo;
 
-    @Column(name = "mailcc", columnDefinition = "NVARCHAR(1000)")
+    @Column(name = "mailcc", columnDefinition = "NVARCHAR(2000)")
     private String mailCC;
 
-    @Column(name = "mailbcc", columnDefinition = "NVARCHAR(1000)")
+    @Column(name = "mailbcc", columnDefinition = "NVARCHAR(2000)")
     private String mailBCC;
 
-    @Column(name = "subject", columnDefinition = "NVARCHAR(1000)")
+    @Column(name = "subject", columnDefinition = "NVARCHAR(2000)")
     private String subject;
 
     @Column(name = "body", columnDefinition = "NVARCHAR(MAX)")

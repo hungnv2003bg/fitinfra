@@ -89,12 +89,42 @@ public class AttendanceReportService {
 
         Optional<AttendanceReport> existing = repository.findByUser_UserIDAndAttendanceDate(userId, attendanceDate);
         
+        // Nếu status là Vắng mặt, Nghỉ phép, hoặc Nghỉ CN thì tự động xóa giờ vào/ra
+        boolean shouldClearTime = status != null && (
+            status.contains("Vắng") || status.contains("Vắng mặt") || status.contains("缺勤") ||
+            status.contains("Nghỉ phép") || status.contains("请假") ||
+            status.contains("Nghỉ CN") || status.contains("周日休")
+        );
+        
+        // Nếu status là Có mặt, Đi muộn, hoặc Nửa ngày và chưa có giờ vào/ra thì tự động set
+        boolean shouldSetDefaultTime = !shouldClearTime && status != null && (
+            status.contains("Có mặt") || status.contains("出勤") ||
+            status.contains("Đi muộn") || status.contains("迟到") ||
+            status.contains("Nửa ngày") || status.contains("半天")
+        ) && (clockInTime == null || clockOutTime == null);
+        
+        LocalTime finalClockInTime;
+        LocalTime finalClockOutTime;
+        
+        if (shouldClearTime) {
+            finalClockInTime = null;
+            finalClockOutTime = null;
+        } else if (shouldSetDefaultTime) {
+            // Xác định giờ vào/ra dựa trên ca
+            boolean isNightShift = "Đêm".equals(shift);
+            finalClockInTime = clockInTime != null ? clockInTime : (isNightShift ? LocalTime.of(20, 0) : LocalTime.of(8, 0));
+            finalClockOutTime = clockOutTime != null ? clockOutTime : (isNightShift ? LocalTime.of(5, 0) : LocalTime.of(17, 0));
+        } else {
+            finalClockInTime = clockInTime;
+            finalClockOutTime = clockOutTime;
+        }
+        
         AttendanceReport attendanceReport;
         if (existing.isPresent()) {
             attendanceReport = existing.get();
             attendanceReport.setStatus(status);
-            attendanceReport.setClockInTime(clockInTime);
-            attendanceReport.setClockOutTime(clockOutTime);
+            attendanceReport.setClockInTime(finalClockInTime);
+            attendanceReport.setClockOutTime(finalClockOutTime);
             attendanceReport.setNote(note);
             if (shift != null && !shift.trim().isEmpty()) {
                 attendanceReport.setShift(shift);
@@ -105,8 +135,8 @@ public class AttendanceReportService {
             attendanceReport.setUser(user);
             attendanceReport.setAttendanceDate(attendanceDate);
             attendanceReport.setStatus(status);
-            attendanceReport.setClockInTime(clockInTime);
-            attendanceReport.setClockOutTime(clockOutTime);
+            attendanceReport.setClockInTime(finalClockInTime);
+            attendanceReport.setClockOutTime(finalClockOutTime);
             attendanceReport.setNote(note);
             attendanceReport.setShift(shift != null && !shift.trim().isEmpty() ? shift : "Ngày");
             attendanceReport.setCreatedAt(LocalDateTime.now());
@@ -137,8 +167,47 @@ public class AttendanceReportService {
         existing.setUser(attendanceReport.getUser());
         existing.setAttendanceDate(attendanceReport.getAttendanceDate());
         existing.setStatus(attendanceReport.getStatus());
-        existing.setClockInTime(attendanceReport.getClockInTime());
-        existing.setClockOutTime(attendanceReport.getClockOutTime());
+        
+        // Nếu status là Vắng mặt, Nghỉ phép, hoặc Nghỉ CN thì tự động xóa giờ vào/ra
+        String status = attendanceReport.getStatus();
+        boolean shouldClearTime = status != null && (
+            status.contains("Vắng") || status.contains("Vắng mặt") || status.contains("缺勤") ||
+            status.contains("Nghỉ phép") || status.contains("请假") ||
+            status.contains("Nghỉ CN") || status.contains("周日休")
+        );
+        
+        // Nếu status là Có mặt, Đi muộn, hoặc Nửa ngày và chưa có giờ vào/ra thì tự động set
+        boolean shouldSetDefaultTime = !shouldClearTime && status != null && (
+            status.contains("Có mặt") || status.contains("出勤") ||
+            status.contains("Đi muộn") || status.contains("迟到") ||
+            status.contains("Nửa ngày") || status.contains("半天")
+        ) && (attendanceReport.getClockInTime() == null || attendanceReport.getClockOutTime() == null);
+        
+        LocalTime finalClockInTime;
+        LocalTime finalClockOutTime;
+        
+        if (shouldClearTime) {
+            finalClockInTime = null;
+            finalClockOutTime = null;
+        } else if (shouldSetDefaultTime) {
+            // Xác định giờ vào/ra dựa trên ca
+            String shift = attendanceReport.getShift() != null && !attendanceReport.getShift().trim().isEmpty() 
+                ? attendanceReport.getShift() 
+                : existing.getShift();
+            boolean isNightShift = "Đêm".equals(shift);
+            finalClockInTime = attendanceReport.getClockInTime() != null 
+                ? attendanceReport.getClockInTime() 
+                : (isNightShift ? LocalTime.of(20, 0) : LocalTime.of(8, 0));
+            finalClockOutTime = attendanceReport.getClockOutTime() != null 
+                ? attendanceReport.getClockOutTime() 
+                : (isNightShift ? LocalTime.of(5, 0) : LocalTime.of(17, 0));
+        } else {
+            finalClockInTime = attendanceReport.getClockInTime();
+            finalClockOutTime = attendanceReport.getClockOutTime();
+        }
+        
+        existing.setClockInTime(finalClockInTime);
+        existing.setClockOutTime(finalClockOutTime);
         existing.setNote(attendanceReport.getNote());
         if (attendanceReport.getShift() != null && !attendanceReport.getShift().trim().isEmpty()) {
             existing.setShift(attendanceReport.getShift());

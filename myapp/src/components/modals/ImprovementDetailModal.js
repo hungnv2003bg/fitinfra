@@ -1,5 +1,6 @@
 import React from "react";
-import { Modal, Descriptions, Tag } from "antd";
+import { Modal, Descriptions, Tag, Button } from "antd";
+import { DownloadOutlined } from "@ant-design/icons";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useSelector } from "react-redux";
 import API_CONFIG from "../../config/api";
@@ -103,6 +104,20 @@ export default function ImprovementDetailModal({ open, record, onCancel, groups 
     return v || undefined;
   })();
 
+  // Handle file download/opening - same approach as SOPDetailModal
+  const handleFileClick = (filePath, fileName) => {
+    try {
+      // Use API_CONFIG.getApiUrl - let browser handle encoding properly
+      const directUrl = API_CONFIG.getApiUrl(filePath);
+      window.open(directUrl, '_blank');
+    } catch (error) {
+      console.error('Error opening file:', error);
+      // Fallback: try with direct URL construction
+      const fullUrl = `${API_CONFIG.BACKEND_URL}${filePath}`;
+      window.open(fullUrl, '_blank');
+    }
+  };
+
   return (
     <Modal title={t.title} open={open} onCancel={onCancel} footer={null} width={700}>
       <Descriptions column={1} bordered size="small">
@@ -126,18 +141,35 @@ export default function ImprovementDetailModal({ open, record, onCancel, groups 
         <Descriptions.Item label={t.files}>
           {Array.isArray(record.files) && record.files.length > 0 ? (
             <div>
-              {record.files.map((file, index) => (
-                <div key={index} style={{ marginBottom: 4 }}>
-                  <a 
-                    href={`${API_CONFIG.BACKEND_URL}${file.url || file.filePath}`} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    style={{ color: '#1677ff' }}
-                  >
-                    {file.name || file.fileName || `File ${index + 1}`}
-                  </a>
-                </div>
-              ))}
+              {record.files.map((file, index) => {
+                const fileUrl = file.url || file.filePath || '';
+                const fileName = file.name || file.fileName || `File ${index + 1}`;
+                
+                return (
+                  <div key={index} style={{ marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <a 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (fileUrl) {
+                          handleFileClick(fileUrl, fileName);
+                        }
+                      }}
+                      style={{ color: '#1677ff', cursor: 'pointer' }}
+                    >
+                      {fileName}
+                    </a>
+                    {fileUrl && (
+                      <Button 
+                        type="link" 
+                        size="small"
+                        icon={<DownloadOutlined />}
+                        onClick={() => handleFileClick(fileUrl, fileName)}
+                        style={{ padding: 0, height: 'auto' }}
+                      />
+                    )}
+                  </div>
+                );
+              })}
             </div>
           ) : '-'}
         </Descriptions.Item>

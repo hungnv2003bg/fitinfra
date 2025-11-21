@@ -40,15 +40,15 @@ public class UsersServiceImpl implements UsersService {
 
     @Override
     public List<Users> findAll() {
-        return usersRepository.findAll();
+        return usersRepository.findAllOrderedByStatusAndCreatedAt();
     }
 
     @Override
     public List<Users> findByGroupId(Long groupId) {
         if (groupId == null) {
-            return usersRepository.findAll();
+            return usersRepository.findAllOrderedByStatusAndCreatedAt();
         }
-        return usersRepository.findDistinctByGroups_Id(groupId);
+        return usersRepository.findDistinctByGroups_IdOrderedByStatusAndCreatedAt(groupId);
     }
 
     @Override
